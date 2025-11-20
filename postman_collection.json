@@ -1,0 +1,47 @@
+{
+  "info": {
+    "name": "Weibo-like API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{baseUrl}}/api/register", "host": ["{{baseUrl}}"], "path": ["api","register"]},
+        "body": {"mode": "raw", "raw": "{\"username\":\"alice\",\"email\":\"a@e.com\",\"password\":\"P@ssw0rd\"}"}
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{baseUrl}}/api/login", "host": ["{{baseUrl}}"], "path": ["api","login"]},
+        "body": {"mode": "raw", "raw": "{\"username\":\"alice\",\"password\":\"P@ssw0rd\"}"}
+      }
+    },
+    {
+      "name": "Refresh",
+      "request": {"method": "POST", "url": {"raw": "{{baseUrl}}/api/token/refresh", "host": ["{{baseUrl}}"], "path": ["api","token","refresh"]}}
+    },
+    {
+      "name": "Me",
+      "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}], "url": {"raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api","me"]}}
+    },
+    {
+      "name": "Create Post",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+        "url": {"raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"]},
+        "body": {"mode": "formdata", "formdata": [{"key": "content", "value": "Hello"}, {"key": "images", "type": "file"}]}
+      }
+    },
+    {
+      "name": "List Posts",
+      "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/posts?limit=20", "host": ["{{baseUrl}}"], "path": ["api","posts"], "query": [{"key": "limit", "value": "20"}]}}
+    }
+  ]
+}

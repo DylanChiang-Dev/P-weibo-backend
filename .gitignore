@@ -1,0 +1,18 @@
+# 忽略環境與動態檔案
+.env
+logs/
+storage/uploads/
+*.log
+*.cache
+/.DS_Store
+vendor/
+node_modules/
+
+# 測試文件
+cookies.txt
+cookies_new.txt
+
+# IDE 和工具
+.trae/
+.vscode/
+.idea/

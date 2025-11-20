@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: Weibo-like API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+paths:
+  /api/register:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '201':
+          description: Created
+  /api/login:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/token/refresh:
+    post:
+      responses:
+        '200': { description: OK }
+  /api/logout:
+    post:
+      responses:
+        '200': { description: OK }
+  /api/me:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /api/posts:
+    post:
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+                images: { type: array, items: { type: string, format: binary } }
+      responses:
+        '201': { description: Created }
+    get:
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/posts/{id}:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+  /api/posts/{id}/like:
+    post:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+  /api/posts/{id}/comments:
+    post:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+      responses:
+        '201': { description: Created }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

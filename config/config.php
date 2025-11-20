@@ -1,0 +1,74 @@
+<?php
+// 設定載入器：讀取 .env 並提供設定陣列
+
+function load_env(string $path): array {
+    $env = [];
+    if (!file_exists($path)) {
+        return $env;
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        $pos = strpos($line, '=');
+        if ($pos === false) continue;
+        $key = trim(substr($line, 0, $pos));
+        $val = trim(substr($line, $pos + 1));
+        // 去除包覆引號
+        if ((str_starts_with($val, '"') && str_ends_with($val, '"')) || (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
+            $val = substr($val, 1, -1);
+        }
+        $env[$key] = $val;
+    }
+    return $env;
+}
+
+function config(): array {
+    static $config = null;
+    if ($config !== null) return $config;
+
+    $root = dirname(__DIR__);
+    $env = load_env($root . '/.env');
+
+    $get = function ($key, $default = null) use ($env) {
+        return $env[$key] ?? $default;
+    };
+
+    $config = [
+        'app_env' => $get('APP_ENV', 'development'),
+        'app_url' => $get('APP_URL', 'http://localhost'),
+        'frontend_origin' => $get('FRONTEND_ORIGIN', 'http://localhost:3000'),
+        'db' => [
+            'host' => $get('DB_HOST', '127.0.0.1'),
+            'port' => (int)$get('DB_PORT', 3306),
+            'name' => $get('DB_NAME', 'weibo_clone'),
+            'user' => $get('DB_USER', 'root'),
+            'pass' => $get('DB_PASS', ''),
+            'charset' => $get('DB_CHARSET', 'utf8mb4'),
+        ],
+        'jwt' => [
+            'access_secret' => $get('JWT_ACCESS_SECRET', ''),
+            'refresh_secret' => $get('JWT_REFRESH_SECRET', ''),
+            'access_ttl' => (int)$get('JWT_ACCESS_TTL', 900),
+            'refresh_ttl' => (int)$get('JWT_REFRESH_TTL', 1209600),
+        ],
+        'upload' => [
+            'path' => $get('UPLOAD_PATH', dirname(__DIR__) . '/storage/uploads'),
+            'max_mb' => (int)$get('MAX_UPLOAD_MB', 10), // Legacy, for backward compatibility
+            'max_image_mb' => (int)$get('MAX_IMAGE_MB', 10),
+            'max_video_mb' => (int)$get('MAX_VIDEO_MB', 100),
+        ],
+        'log' => [
+            'path' => $get('LOG_PATH', dirname(__DIR__) . '/logs'),
+        ],
+        'admin' => [
+            'email' => $get('ADMIN_EMAIL'),
+            'password' => $get('ADMIN_PASSWORD'),
+            'display_name' => $get('ADMIN_DISPLAY_NAME', 'Admin'),
+        ],
+    ];
+
+    return $config;
+}
+
+?>
