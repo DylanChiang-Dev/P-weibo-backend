@@ -39,6 +39,6 @@ class UserController {
         } catch (\Throwable $e) {
             Response::json(['success' => false, 'error' => 'Internal Server Error'], 500);
         }
-    }
+    }   
 }
 ?>
