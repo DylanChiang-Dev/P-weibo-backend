@@ -19,7 +19,10 @@ class CorsMiddleware implements Middleware {
     public function handle(Request $request, Closure $next): mixed {
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
         
-        if ($origin && $origin === $this->allowedOrigin) {
+        // Support multiple allowed origins (comma separated)
+        $allowedOrigins = array_map('trim', explode(',', $this->allowedOrigin));
+        
+        if ($origin && (in_array($origin, $allowedOrigins) || in_array('*', $allowedOrigins))) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Credentials: true');
             header('Vary: Origin');
