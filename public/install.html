@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P-Weibo Backend 安裝</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -15,27 +21,32 @@
             justify-content: center;
             padding: 20px;
         }
+
         .container {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             max-width: 600px;
             width: 100%;
             padding: 40px;
         }
+
         h1 {
             color: #333;
             margin-bottom: 10px;
             font-size: 28px;
         }
+
         .subtitle {
             color: #666;
             margin-bottom: 30px;
             font-size: 14px;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
+
         label {
             display: block;
             margin-bottom: 8px;
@@ -43,6 +54,7 @@
             font-weight: 500;
             font-size: 14px;
         }
+
         input[type="text"],
         input[type="password"],
         input[type="email"] {
@@ -53,15 +65,18 @@
             font-size: 14px;
             transition: border-color 0.3s;
         }
+
         input:focus {
             outline: none;
             border-color: #667eea;
         }
+
         .hint {
             font-size: 12px;
             color: #888;
             margin-top: 4px;
         }
+
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -74,13 +89,16 @@
             width: 100%;
             transition: transform 0.2s;
         }
+
         button:hover {
             transform: translateY(-2px);
         }
+
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
+
         .success {
             background: #10b981;
             color: white;
@@ -88,6 +106,7 @@
             border-radius: 6px;
             margin-bottom: 20px;
         }
+
         .error {
             background: #ef4444;
             color: white;
@@ -95,17 +114,21 @@
             border-radius: 6px;
             margin-bottom: 20px;
         }
+
         .step {
             display: none;
         }
+
         .step.active {
             display: block;
         }
+
         .progress {
             display: flex;
             justify-content: space-between;
             margin-bottom: 30px;
         }
+
         .progress-step {
             flex: 1;
             text-align: center;
@@ -114,17 +137,20 @@
             color: #999;
             font-size: 14px;
         }
+
         .progress-step.active {
             border-bottom-color: #667eea;
             color: #667eea;
             font-weight: 600;
         }
+
         .progress-step.completed {
             border-bottom-color: #10b981;
             color: #10b981;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>🚀 P-Weibo Backend 安裝</h1>
@@ -176,7 +202,8 @@
                     <label>管理員顯示名稱</label>
                     <input type="text" name="admin_name" required>
                 </div>
-                <button type="button" onclick="prevStep(1)" style="background: #6b7280; margin-bottom: 10px;">← 上一步</button>
+                <button type="button" onclick="prevStep(1)" style="background: #6b7280; margin-bottom: 10px;">←
+                    上一步</button>
                 <button type="submit" id="installBtn">開始安裝</button>
             </div>
 
@@ -195,11 +222,11 @@
         function nextStep(step) {
             document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.progress-step').forEach(s => s.classList.remove('active'));
-            
+
             for (let i = 1; i < step; i++) {
                 document.getElementById('progress' + i).classList.add('completed');
             }
-            
+
             document.getElementById('step' + step).classList.add('active');
             document.getElementById('progress' + step).classList.add('active');
         }
@@ -208,26 +235,45 @@
             nextStep(step);
         }
 
-        document.getElementById('installForm').addEventListener('submit', async function(e) {
+        document.getElementById('installForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const btn = document.getElementById('installBtn');
             btn.disabled = true;
             btn.textContent = '正在安裝...';
-            
+
             const formData = new FormData(this);
             formData.append('action', 'install');
-            
+
             try {
                 const response = await fetch('install.php', {
                     method: 'POST',
                     body: formData
                 });
-                
-                const result = await response.json();
-                
+
+                const text = await response.text();
+                let result;
+
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    // Response is not JSON, probably a PHP error
+                    nextStep(3);
+                    document.getElementById('errorMsg').style.display = 'block';
+                    document.getElementById('errorMsg').innerHTML = `
+                        ❌ 安裝失敗: 服務器返回錯誤<br><br>
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; font-weight: bold;">查看詳細錯誤信息</summary>
+                            <pre style="background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 10px; font-size: 12px; max-height: 400px;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                        </details>
+                    `;
+                    btn.disabled = false;
+                    btn.textContent = '重試安裝';
+                    return;
+                }
+
                 nextStep(3);
-                
+
                 if (result.success) {
                     document.getElementById('successMsg').style.display = 'block';
                     document.getElementById('completionInfo').innerHTML = `
@@ -255,4 +301,5 @@
         });
     </script>
 </body>
+
 </html>
