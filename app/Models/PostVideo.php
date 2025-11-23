@@ -42,5 +42,17 @@ class PostVideo {
             ->where('post_id', '=', $postId)
             ->delete();
     }
+
+    public static function getById(int $id): ?array {
+        return QueryBuilder::table('post_videos')
+            ->where('id', '=', $id)
+            ->first();
+    }
+
+    public static function delete(int $id): void {
+        QueryBuilder::table('post_videos')
+            ->where('id', '=', $id)
+            ->delete();
+    }
 }
 ?>

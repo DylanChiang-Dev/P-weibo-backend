@@ -1,13 +1,24 @@
 <?php
 namespace App\Core;
 
-use App\Core\Auth;
+use App\Exceptions\NotFoundException;
+use Closure;
 
 class Router {
     private Request $request;
     private array $routes = [];
+    private array $globalMiddleware = [];
 
-    public function __construct(Request $request) { $this->request = $request; }
+    public function __construct(Request $request) { 
+        $this->request = $request; 
+    }
+
+    /**
+     * Add global middleware to be executed on all routes
+     */
+    public function addGlobalMiddleware(Middleware $middleware): void {
+        $this->globalMiddleware[] = $middleware;
+    }
 
     public function get(string $path, callable|array $handler, array $options = []): void {
         $this->add('GET', $path, $handler, $options);
@@ -25,6 +36,10 @@ class Router {
         $this->add('PUT', $path, $handler, $options);
     }
 
+    public function patch(string $path, callable|array $handler, array $options = []): void {
+        $this->add('PATCH', $path, $handler, $options);
+    }
+
     private function add(string $method, string $path, callable|array $handler, array $options): void {
         $this->routes[$method][] = [$path, $handler, $options];
     }
@@ -33,19 +48,54 @@ class Router {
         $method = $this->request->method;
         $path = rtrim($this->request->path, '/') ?: '/';
         $candidates = $this->routes[$method] ?? [];
+        
         foreach ($candidates as [$pattern, $handler, $opts]) {
             $regex = $this->compilePattern($pattern);
             if (preg_match($regex, $path, $m)) {
                 $params = $this->extractParams($regex, $m);
+                
+                // Build middleware stack
+                $middleware = $this->globalMiddleware;
+                
+                // Add route-specific middleware (for backward compatibility with 'auth' option)
                 if (($opts['auth'] ?? false) === true) {
-                    $user = Auth::requireAccess($this->request->bearerToken());
-                    $this->request->user = $user;
+                    $middleware[] = new \App\Middleware\AuthMiddleware();
                 }
-                $this->invoke($handler, $params);
+                
+                // Add custom middleware if specified
+                if (isset($opts['middleware'])) {
+                    $customMiddleware = is_array($opts['middleware']) ? $opts['middleware'] : [$opts['middleware']];
+                    foreach ($customMiddleware as $m) {
+                        $middleware[] = is_string($m) ? new $m() : $m;
+                    }
+                }
+                
+                // Execute middleware pipeline
+                $this->runMiddlewarePipeline($middleware, $handler, $params);
                 return;
             }
         }
-        Response::json(['success' => false, 'error' => 'Not Found'], 404);
+        
+        throw new NotFoundException('Route not found');
+    }
+
+    /**
+     * Execute middleware pipeline
+     */
+    private function runMiddlewarePipeline(array $middleware, callable|array $handler, array $params): void {
+        $pipeline = array_reduce(
+            array_reverse($middleware),
+            function ($next, $middleware) {
+                return function ($request) use ($next, $middleware) {
+                    return $middleware->handle($request, $next);
+                };
+            },
+            function ($request) use ($handler, $params) {
+                return $this->invoke($handler, $params);
+            }
+        );
+
+        $pipeline($this->request);
     }
 
     private function compilePattern(string $pattern): string {

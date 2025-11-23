@@ -27,6 +27,10 @@ class Database {
         return self::$pdo;
     }
 
+    public static function getPdo(): PDO {
+        return self::pdo();
+    }
+
     public static function query(string $sql, array $params = []): \PDOStatement {
         $stmt = self::pdo()->prepare($sql);
         $stmt->execute($params);

@@ -24,6 +24,8 @@ use App\Core\Router;
 use App\Core\Logger;
 use App\Core\Database;
 use App\Core\Auth;
+use App\Core\ExceptionHandler;
+use App\Middleware\CorsMiddleware;
 
 // 初始化核心
 Logger::init($config['log']['path']);
@@ -31,21 +33,10 @@ Database::init($config['db']);
 Auth::init($config['jwt'], $config['app_url']);
 
 $request = Request::fromGlobals();
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin && $origin === $config['frontend_origin']) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Credentials: true');
-    header('Vary: Origin');
-}
-if ($request->method === 'OPTIONS') {
-    header('Access-Control-Allow-Methods: GET,POST,OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    http_response_code(204);
-    exit;
-}
 $router = new Router($request);
 
-// 共用 middleware：簡易 rate limit（登入等）可在控制器呼叫，auth 由 Router 支援
+// 添加全局中間件
+$router->addGlobalMiddleware(new CorsMiddleware($config['frontend_origin']));
 
 // 路由註冊
 use App\Controllers\AuthController;
@@ -61,16 +52,20 @@ $router->post('/api/token/refresh', [AuthController::class, 'refresh']); // New 
 $router->post('/api/logout', [AuthController::class, 'logout'], ['auth' => true]);
 $router->get('/api/me', [AuthController::class, 'me'], ['auth' => true]);
 
+use App\Middleware\AdminMiddleware;
+use App\Middleware\OptionalAuthMiddleware;
+
 // Posts
-$router->post('/api/posts', [PostController::class, 'create'], ['auth' => true]);
-$router->get('/api/posts', [PostController::class, 'list']);
-$router->get('/api/posts/{id}', [PostController::class, 'get']);
-$router->delete('/api/posts/{id}', [PostController::class, 'delete'], ['auth' => true]); // New route for deleting a post
+$router->post('/api/posts', [PostController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/posts', [PostController::class, 'list'], ['middleware' => [OptionalAuthMiddleware::class]]);
+$router->get('/api/posts/{id}', [PostController::class, 'get'], ['middleware' => [OptionalAuthMiddleware::class]]);
+$router->delete('/api/posts/{id}', [PostController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);
+$router->patch('/api/posts/{id}', [PostController::class, 'update'], ['middleware' => [AdminMiddleware::class]]);
 $router->post('/api/posts/{id}/like', [PostController::class, 'like'], ['auth' => true]);
 $router->post('/api/posts/{id}/comments', [PostController::class, 'createComment']); // Public access for guest comments
 $router->get('/api/posts/{id}/comments', [PostController::class, 'getComments']);
-$router->post('/api/posts/{id}/pin', [PostController::class, 'pin'], ['auth' => true]); // Pin post
-$router->post('/api/posts/{id}/unpin', [PostController::class, 'unpin'], ['auth' => true]); // Unpin post
+$router->post('/api/posts/{id}/pin', [PostController::class, 'pin'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/posts/{id}/unpin', [PostController::class, 'unpin'], ['middleware' => [AdminMiddleware::class]]);
 
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
@@ -80,12 +75,7 @@ $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => t
 try {
     $router->dispatch();
 } catch (Throwable $e) {
-    Logger::error('unhandled_exception', [
-        'message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-    ]);
-    Response::json(['success' => false, 'error' => 'Internal Server Error'], 500);
+    ExceptionHandler::handle($e);
 }
 
 ?>

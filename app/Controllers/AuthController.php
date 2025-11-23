@@ -3,7 +3,10 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\ApiResponse;
 use App\Core\Validator;
+use App\Exceptions\ValidationException;
+use App\Exceptions\NotFoundException;
 use App\Services\AuthService;
 use App\Services\TokenService;
 use App\Services\RateLimitService;
@@ -21,9 +24,9 @@ class AuthController {
     public function register(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
         $errs = Validator::required($data, ['email', 'password']);
-        if (!empty($errs)) Response::json(['success' => false, 'error' => 'Bad Request', 'details' => $errs], 400);
-        if (!Validator::email($data['email'])) Response::json(['success' => false, 'error' => 'Bad email'], 400);
-        if (!Validator::length($data['password'], 8, 255)) Response::json(['success' => false, 'error' => 'Weak password'], 400);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        if (!Validator::email($data['email'])) throw new ValidationException('Invalid email format');
+        if (!Validator::length($data['password'], 8, 255)) throw new ValidationException('Password must be at least 8 characters');
 
         $config = \config();
         $limiter = new RateLimitService(
@@ -33,15 +36,11 @@ class AuthController {
         );
 
         if (!$limiter->check($data['email'])) {
-            Response::json(['success' => false, 'error' => 'Too many attempts'], 429);
+            ApiResponse::error('Too many registration attempts. Please try again later.', 429);
         }
 
-        try {
-            $result = $this->authService->register($data['email'], $data['password']);
-            Response::json(['success' => true, 'data' => $result], 201);
-        } catch (\RuntimeException $e) {
-            Response::json(['success' => false, 'error' => $e->getMessage()], $e->getCode() ?: 400);
-        }
+        $result = $this->authService->register($data['email'], $data['password']);
+        ApiResponse::success($result, 201);
     }
 
     public function login(Request $req): void {
@@ -52,24 +51,20 @@ class AuthController {
             $config['app_env'] === 'production' ? 600 : 60
         );
         if (!$limiter->check('login:' . $req->ip())) {
-            Response::json(['success' => false, 'error' => 'Too Many Requests'], 429);
+            ApiResponse::error('Too many login attempts. Please try again later.', 429);
         }
         $data = is_array($req->body) ? $req->body : [];
         $errs = Validator::required($data, ['email', 'password']);
-        if (!empty($errs)) Response::json(['success' => false, 'error' => 'Bad Request'], 400);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
 
-        try {
-            $tokens = $this->authService->login($data['email'], $data['password'], $req->userAgent(), $req->ip());
-            
-            Response::setCookie('refresh_token', $tokens['refresh_token'], [
-                'expires' => time() + $config['jwt']['refresh_ttl'],
-                'path' => '/', 'secure' => $config['app_env'] !== 'development', 'httponly' => true, 'samesite' => 'None'
-            ]);
-            unset($tokens['refresh_token']);
-            Response::json(['success' => true, 'data' => $tokens]);
-        } catch (\RuntimeException $e) {
-            Response::json(['success' => false, 'error' => $e->getMessage()], $e->getCode() ?: 401);
-        }
+        $tokens = $this->authService->login($data['email'], $data['password'], $req->userAgent(), $req->ip());
+        
+        Response::setCookie('refresh_token', $tokens['refresh_token'], [
+            'expires' => time() + $config['jwt']['refresh_ttl'],
+            'path' => '/', 'secure' => $config['app_env'] !== 'development', 'httponly' => true, 'samesite' => 'None'
+        ]);
+        unset($tokens['refresh_token']);
+        ApiResponse::success($tokens);
     }
 
     public function refresh(Request $req): void {
@@ -78,7 +73,7 @@ class AuthController {
         
         if (!$refresh) {
             Response::clearCookie('refresh_token');
-            Response::json(['success' => false, 'error' => 'Missing refresh token'], 401);
+            throw new ValidationException('Missing refresh token');
         }
 
         try {
@@ -88,10 +83,10 @@ class AuthController {
                 'path' => '/', 'secure' => $config['app_env'] !== 'development', 'httponly' => true, 'samesite' => 'None'
             ]);
             unset($tokens['refresh_token']);
-            Response::json(['success' => true, 'data' => $tokens]);
+            ApiResponse::success($tokens);
         } catch (\Exception $e) {
              Response::clearCookie('refresh_token');
-             Response::json(['success' => false, 'error' => $e->getMessage()], 401);
+             throw $e;
         }
     }
 
@@ -101,13 +96,13 @@ class AuthController {
             $this->authService->logout($refresh);
         }
         Response::clearCookie('refresh_token');
-        Response::json(['success' => true]);
+        ApiResponse::success();
     }
 
     public function me(Request $req): void {
         $user = User::findById((int)$req->user['id']);
-        if (!$user) Response::json(['success' => false, 'error' => 'Not Found'], 404);
-        Response::json(['success' => true, 'data' => $user]);
+        if (!$user) throw new NotFoundException('User not found');
+        ApiResponse::success($user);
     }
 }
 ?>

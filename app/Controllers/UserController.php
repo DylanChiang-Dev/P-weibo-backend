@@ -2,7 +2,8 @@
 namespace App\Controllers;
 
 use App\Core\Request;
-use App\Core\Response;
+use App\Core\ApiResponse;
+use App\Exceptions\NotFoundException;
 use App\Services\UserService;
 
 class UserController {
@@ -17,10 +18,10 @@ class UserController {
         $profile = $this->service->getProfile($email);
         
         if (!$profile) {
-            Response::json(['success' => false, 'error' => 'User not found'], 404);
+            throw new NotFoundException('User not found');
         }
 
-        Response::json(['success' => true, 'data' => $profile]);
+        ApiResponse::success($profile);
     }
 
     public function updateMe(Request $req, array $params): void {
@@ -30,15 +31,8 @@ class UserController {
         $displayName = $_POST['displayName'] ?? null;
         $avatarFile = $req->files['avatar'] ?? null;
 
-        try {
-            $result = $this->service->updateProfile($user['id'], $displayName, $avatarFile);
-            Response::json(['success' => true, 'data' => $result]);
-        } catch (\RuntimeException $e) {
-            $code = $e->getCode() ?: 500;
-            Response::json(['success' => false, 'error' => $e->getMessage()], $code);
-        } catch (\Throwable $e) {
-            Response::json(['success' => false, 'error' => 'Internal Server Error'], 500);
-        }
+        $result = $this->service->updateProfile($user['id'], $displayName, $avatarFile);
+        ApiResponse::success($result);
     }   
 }
 ?>

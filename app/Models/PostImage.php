@@ -18,5 +18,17 @@ class PostImage {
             ->where('post_id', '=', $postId)
             ->get();
     }
+
+    public static function getById(int $id): ?array {
+        return QueryBuilder::table('post_images')
+            ->where('id', '=', $id)
+            ->first();
+    }
+
+    public static function delete(int $id): void {
+        QueryBuilder::table('post_images')
+            ->where('id', '=', $id)
+            ->delete();
+    }
 }
 ?>

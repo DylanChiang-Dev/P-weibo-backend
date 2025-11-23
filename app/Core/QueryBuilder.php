@@ -53,6 +53,44 @@ class QueryBuilder {
         return $this;
     }
 
+    public function whereIn(string $column, array $values): self {
+        if (empty($values)) {
+            // Empty IN clause - add a false condition
+            $this->where[] = '1 = 0';
+            return $this;
+        }
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->where[] = "$column IN ($placeholders)";
+        $this->params = array_merge($this->params, $values);
+        return $this;
+    }
+
+    public function whereNotIn(string $column, array $values): self {
+        if (empty($values)) {
+            return $this; // Empty NOT IN has no effect
+        }
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->where[] = "$column NOT IN ($placeholders)";
+        $this->params = array_merge($this->params, $values);
+        return $this;
+    }
+
+    public function orWhere(string $column, string $operator, mixed $value = null): self {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+        // If this is the first where clause, treat as regular where
+        if (empty($this->where)) {
+            return $this->where($column, $operator, $value);
+        }
+        // Get the last where condition and wrap it with the new OR condition
+        $lastIndex = count($this->where) - 1;
+        $this->where[$lastIndex] = '(' . $this->where[$lastIndex] . " OR $column $operator ?)";
+        $this->params[] = $value;
+        return $this;
+    }
+
     public function groupBy(string $column): self {
         $this->groupBy = $column;
         return $this;
@@ -60,6 +98,11 @@ class QueryBuilder {
 
     public function limit(int $limit): self {
         $this->limit = $limit;
+        return $this;
+    }
+
+    public function offset(int $offset): self {
+        $this->offset = $offset;
         return $this;
     }
 
@@ -190,6 +233,31 @@ class QueryBuilder {
         if ($this->limit === null) {
             return '';
         }
-        return " LIMIT {$this->limit}";
+        $sql = " LIMIT {$this->limit}";
+        if ($this->offset !== null) {
+            $sql .= " OFFSET {$this->offset}";
+        }
+        return $sql;
+    }
+
+    /**
+     * Execute a function within a database transaction
+     * 
+     * @param callable $callback Function to execute within transaction
+     * @return mixed Result từ callback
+     * @throws \Exception If transaction fails
+     */
+    public static function transaction(callable $callback): mixed {
+        $pdo = Database::getPdo();
+        
+        try  {
+            $pdo->beginTransaction();
+            $result = $callback();
+            $pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 }

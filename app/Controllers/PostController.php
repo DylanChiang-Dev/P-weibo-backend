@@ -2,9 +2,12 @@
 namespace App\Controllers;
 
 use App\Core\Request;
-use App\Core\Response;
+use App\Core\ApiResponse;
 use App\Core\Logger;
 use App\Core\Validator;
+use App\Exceptions\ValidationException;
+use App\Exceptions\NotFoundException;
+use App\Exceptions\ForbiddenException;
 use App\Services\PostService;
 
 class PostController {
@@ -17,116 +20,140 @@ class PostController {
 
     public function create(Request $req): void {
         $userId = (int)$req->user['id'];
-        $content = is_array($req->body) ? trim((string)($req->body['content'] ?? '')) : '';
-        if ($content === '') Response::json(['success' => false, 'error' => 'Content required'], 400);
-
-        $imageFiles = $req->files['images'] ?? [];
-        $videoFiles = $req->files['videos'] ?? [];
-
-        try {
-            $postId = $this->postService->createPost($userId, $content, $imageFiles, $videoFiles);
-            Response::json(['success' => true, 'data' => ['id' => $postId]], 201);
-        } catch (\RuntimeException $e) {
-            Response::json(['success' => false, 'error' => $e->getMessage()], 500);
+        $content = $_POST['content'] ?? '';
+        $visibility = $_POST['visibility'] ?? 'public';
+        
+        if (empty(trim($content))) {
+            throw new ValidationException('Content is required');
         }
+        
+        $images = $req->files['images'] ?? [];
+        $videos = $req->files['videos'] ?? [];
+        
+        $postId = $this->postService->createPost($userId, $content, $visibility, $images, $videos);
+        ApiResponse::success(['id' => $postId], 201);
     }
 
     public function list(Request $req): void {
         $limit = isset($req->query['limit']) ? max(1, min(100, (int)$req->query['limit'])) : 20;
         $cursor = $req->query['cursor'] ?? null;
+        $currentUserId = $req->user['id'] ?? null;
         
-        $data = $this->postService->getPosts($limit, $cursor);
-        Response::json(['success' => true, 'data' => $data]);
+        $data = $this->postService->getPosts($limit, $cursor, $currentUserId);
+        ApiResponse::success($data);
     }
 
     public function get(Request $req, array $params): void {
         $id = (int)($params['id'] ?? 0);
-        $data = $this->postService->getPost($id);
+        $currentUserId = isset($req->user['id']) ? (int)$req->user['id'] : null;
         
-        if (!$data) Response::json(['success' => false, 'error' => 'Not Found'], 404);
-        Response::json(['success' => true, 'data' => $data]);
+        Logger::info('get_post_request', [
+            'post_id' => $id,
+            'current_user_id' => $currentUserId,
+            'has_user' => isset($req->user),
+            'user_data' => $req->user ?? null
+        ]);
+        
+        $data = $this->postService->getPost($id, $currentUserId);
+        
+        if (!$data) throw new NotFoundException('Post not found');
+        ApiResponse::success($data);
     }
 
     public function like(Request $req, array $params): void {
         $id = (int)($params['id'] ?? 0);
         $cnt = $this->postService->likePost((int)$req->user['id'], $id);
-        Response::json(['success' => true, 'data' => ['like_count' => $cnt]]);
+        ApiResponse::success(['like_count' => $cnt]);
     }
 
     public function createComment(Request $req, array $params): void {
         $data = is_array($req->body) ? $req->body : [];
         $errs = Validator::required($data, ['content']);
-        if (!empty($errs)) Response::json(['success' => false, 'error' => 'Bad Request', 'details' => $errs], 400);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
 
         $userId = $req->user ? (int)$req->user['id'] : null;
         $authorName = $data['authorName'] ?? null;
 
         if (!$userId && empty($authorName)) {
-             Response::json(['success' => false, 'error' => 'Author name is required for guests'], 400);
+             throw new ValidationException('Author name is required for guest comments');
         }
 
-        try {
-            $this->postService->commentPost($userId, (int)$params['id'], $data['content'], $authorName);
-            Response::json(['success' => true]);
-        } catch (\InvalidArgumentException $e) {
-            Response::json(['success' => false, 'error' => $e->getMessage()], 400);
-        } catch (\RuntimeException $e) {
-            Response::json(['success' => false, 'error' => $e->getMessage()], 500);
-        }
+        $this->postService->commentPost($userId, (int)$params['id'], $data['content'], $authorName);
+        ApiResponse::success();
     }
 
     public function delete(Request $req, array $params): void {
         $user = $req->user;
         $id = (int)($params['id'] ?? 0);
 
-        try {
-            $this->postService->deletePost($user['id'], $id);
-            Response::json(['success' => true]);
-        } catch (\RuntimeException $e) {
-            $code = $e->getMessage() === 'Forbidden' ? 403 : 404;
-            Response::json(['success' => false, 'error' => $e->getMessage()], $code);
-        } catch (\Throwable $e) {
-            Logger::error('delete_post_failed', ['error' => $e->getMessage()]);
-            Response::json(['success' => false, 'error' => 'Internal Server Error'], 500);
-        }
+        $this->postService->deletePost($user['id'], $id);
+        ApiResponse::success();
     }
 
     public function getComments(Request $req, array $params): void {
         $id = (int)($params['id'] ?? 0);
         
-        try {
-            $comments = $this->postService->getComments($id);
-            Response::json(['success' => true, 'data' => $comments]);
-        } catch (\Throwable $e) {
-            Logger::error('get_comments_failed', ['error' => $e->getMessage()]);
-            Response::json(['success' => false, 'error' => 'Internal Server Error'], 500);
-        }
+        $comments = $this->postService->getComments($id);
+        ApiResponse::success($comments);
     }
 
     public function pin(Request $req, array $params): void {
         $userId = (int)$req->user['id'];
         $postId = (int)($params['id'] ?? 0);
 
-        try {
-            $this->postService->pinPost($userId, $postId);
-            Response::json(['success' => true]);
-        } catch (\RuntimeException $e) {
-            $code = $e->getCode() ?: 500;
-            Response::json(['success' => false, 'error' => $e->getMessage()], $code);
-        }
+        $this->postService->pinPost($userId, $postId);
+        ApiResponse::success();
     }
 
     public function unpin(Request $req, array $params): void {
         $userId = (int)$req->user['id'];
         $postId = (int)($params['id'] ?? 0);
 
-        try {
-            $this->postService->unpinPost($userId, $postId);
-            Response::json(['success' => true]);
-        } catch (\RuntimeException $e) {
-            $code = $e->getCode() ?: 500;
-            Response::json(['success' => false, 'error' => $e->getMessage()], $code);
+        $this->postService->unpinPost($userId, $postId);
+        ApiResponse::success();
+    }
+
+    public function update(Request $req, array $params): void {
+        $userId = (int)$req->user['id'];
+        $postId = (int)($params['id'] ?? 0);
+        
+        // Support both JSON and FormData
+        $content = $_POST['content'] ?? $req->body['content'] ?? null;
+        $createdAt = $_POST['created_at'] ?? $req->body['created_at'] ?? null;
+        $visibility = $_POST['visibility'] ?? $req->body['visibility'] ?? null;
+        
+        // Parse delete_images[] and delete_videos[] arrays
+        $deleteImageIds = [];
+        $deleteVideoIds = [];
+        
+        if (isset($_POST['delete_images'])) {
+            $deleteImageIds = is_array($_POST['delete_images']) 
+                ? array_map('intval', $_POST['delete_images']) 
+                : [intval($_POST['delete_images'])];
         }
+        
+        if (isset($_POST['delete_videos'])) {
+            $deleteVideoIds = is_array($_POST['delete_videos']) 
+                ? array_map('intval', $_POST['delete_videos']) 
+                : [intval($_POST['delete_videos'])];
+        }
+        
+        // Get uploaded files
+        $imageFiles = $req->files['images'] ?? [];
+        $videoFiles = $req->files['videos'] ?? [];
+
+        $result = $this->postService->updatePost(
+            $userId, 
+            $postId, 
+            $content, 
+            $createdAt,
+            $visibility,
+            $deleteImageIds,
+            $deleteVideoIds,
+            $imageFiles,
+            $videoFiles
+        );
+        ApiResponse::success($result);
     }
 }
 ?>

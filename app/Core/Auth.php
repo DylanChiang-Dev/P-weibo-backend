@@ -1,6 +1,10 @@
 <?php
 namespace App\Core;
 
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use App\Exceptions\UnauthorizedException;
+
 class Auth {
     private static array $jwt;
     private static string $iss;
@@ -65,9 +69,8 @@ class Auth {
             $payload = self::verifyAccessToken($token);
             return ['id' => (int)$payload['sub']];
         } catch (\Throwable $e) {
-            Response::json(['success' => false, 'error' => 'Unauthorized'], 401);
+            throw new UnauthorizedException('Invalid or expired token');
         }
-        return [];
     }
 }
 ?>
