@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P-Weibo Backend 安裝</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .progress {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-bottom: 3px solid #e0e0e0;
+            color: #999;
+            font-size: 14px;
+        }
+        .progress-step.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .progress-step.completed {
+            border-bottom-color: #10b981;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 P-Weibo Backend 安裝</h1>
+        <p class="subtitle">歡迎！讓我們快速設置您的社交平台後端</p>
+
+        <div class="progress">
+            <div class="progress-step active" id="progress1">1. 數據庫</div>
+            <div class="progress-step" id="progress2">2. 管理員</div>
+            <div class="progress-step" id="progress3">3. 完成</div>
+        </div>
+
+        <form id="installForm" method="POST" action="install.php">
+            <!-- Step 1: Database Config -->
+            <div class="step active" id="step1">
+                <div class="form-group">
+                    <label>數據庫主機</label>
+                    <input type="text" name="db_host" value="127.0.0.1" required>
+                    <div class="hint">通常是 127.0.0.1 或 localhost</div>
+                </div>
+                <div class="form-group">
+                    <label>數據庫名稱</label>
+                    <input type="text" name="db_name" required>
+                    <div class="hint">在寶塔面板中創建的數據庫名</div>
+                </div>
+                <div class="form-group">
+                    <label>數據庫用戶名</label>
+                    <input type="text" name="db_user" required>
+                </div>
+                <div class="form-group">
+                    <label>數據庫密碼</label>
+                    <input type="password" name="db_pass" required>
+                </div>
+                <button type="button" onclick="nextStep(2)">下一步 →</button>
+            </div>
+
+            <!-- Step 2: Admin Account -->
+            <div class="step" id="step2">
+                <div class="form-group">
+                    <label>管理員郵箱</label>
+                    <input type="email" name="admin_email" required>
+                    <div class="hint">用於登錄後台</div>
+                </div>
+                <div class="form-group">
+                    <label>管理員密碼</label>
+                    <input type="password" name="admin_pass" minlength="8" required>
+                    <div class="hint">至少 8 個字符</div>
+                </div>
+                <div class="form-group">
+                    <label>管理員顯示名稱</label>
+                    <input type="text" name="admin_name" required>
+                </div>
+                <button type="button" onclick="prevStep(1)" style="background: #6b7280; margin-bottom: 10px;">← 上一步</button>
+                <button type="submit" id="installBtn">開始安裝</button>
+            </div>
+
+            <!-- Step 3: Complete -->
+            <div class="step" id="step3">
+                <div class="success" id="successMsg" style="display:none;">
+                    ✅ 安裝成功！您的 P-Weibo Backend 已準備就緒。
+                </div>
+                <div class="error" id="errorMsg" style="display:none;"></div>
+                <div id="completionInfo"></div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function nextStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.progress-step').forEach(s => s.classList.remove('active'));
+            
+            for (let i = 1; i < step; i++) {
+                document.getElementById('progress' + i).classList.add('completed');
+            }
+            
+            document.getElementById('step' + step).classList.add('active');
+            document.getElementById('progress' + step).classList.add('active');
+        }
+
+        function prevStep(step) {
+            nextStep(step);
+        }
+
+        document.getElementById('installForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('installBtn');
+            btn.disabled = true;
+            btn.textContent = '正在安裝...';
+            
+            const formData = new FormData(this);
+            formData.append('action', 'install');
+            
+            try {
+                const response = await fetch('install.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                nextStep(3);
+                
+                if (result.success) {
+                    document.getElementById('successMsg').style.display = 'block';
+                    document.getElementById('completionInfo').innerHTML = `
+                        <p style="margin-bottom: 20px;">您可以使用以下憑證登錄：</p>
+                        <ul style="list-style: none; background: #f9fafb; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+                            <li style="margin-bottom: 10px;"><strong>郵箱:</strong> ${formData.get('admin_email')}</li>
+                            <li><strong>密碼:</strong> (您設置的密碼)</li>
+                        </ul>
+                        <a href="/api/posts" style="display: inline-block; background: #667eea; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-right: 10px;">查看 API</a>
+                        <button onclick="location.reload()" style="background: #10b981; width: auto; padding: 12px 24px;">重新安裝</button>
+                    `;
+                } else {
+                    document.getElementById('errorMsg').style.display = 'block';
+                    document.getElementById('errorMsg').textContent = '❌ 安裝失敗: ' + result.error;
+                    btn.disabled = false;
+                    btn.textContent = '重試安裝';
+                }
+            } catch (error) {
+                nextStep(3);
+                document.getElementById('errorMsg').style.display = 'block';
+                document.getElementById('errorMsg').textContent = '❌ 發生錯誤: ' + error.message;
+                btn.disabled = false;
+                btn.textContent = '重試安裝';
+            }
+        });
+    </script>
+</body>
+</html>

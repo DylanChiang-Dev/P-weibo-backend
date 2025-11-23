@@ -3,6 +3,10 @@
 
 declare(strict_types=1);
 
+// Enable error display for debugging (remove in production after setup)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 $root = dirname(__DIR__);
 require_once $root . '/config/config.php';
 $config = config();
