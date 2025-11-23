@@ -116,9 +116,7 @@ ENV;
     
     // Step 5: Run database migrations
     $migrations = [
-        $root . '/migrations/001_schema.sql',
-        $root . '/migrations/002_add_role_to_users.sql',
-        $root . '/migrations/003_add_visibility_to_posts.sql'
+        $root . '/migrations/schema.sql'
     ];
     
     foreach ($migrations as $migrationFile) {
