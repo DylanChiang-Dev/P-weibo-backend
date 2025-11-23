@@ -8,6 +8,17 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 $root = dirname(__DIR__);
+
+// Auto-redirect to installer if .env doesn't exist
+if (!file_exists($root . '/.env')) {
+    // Check if this is already the install page to avoid redirect loop
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if (strpos($requestUri, 'install.') === false && strpos($requestUri, 'check-env.') === false) {
+        header('Location: /install.html');
+        exit;
+    }
+}
+
 require_once $root . '/config/config.php';
 $config = config();
 
