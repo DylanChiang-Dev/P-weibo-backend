@@ -153,12 +153,12 @@ ENV;
     
     if ($existingUser) {
         // Update existing user to admin
-        $stmt = $pdo->prepare("UPDATE users SET password = ?, display_name = ?, role = 'admin' WHERE email = ?");
+        $stmt = $pdo->prepare("UPDATE users SET password_hash = ?, display_name = ?, role = 'admin' WHERE email = ?");
         $stmt->execute([$hashedPassword, $adminName, $adminEmail]);
     } else {
         // Create new admin user
         $username = explode('@', $adminEmail)[0];
-        $stmt = $pdo->prepare("INSERT INTO users (email, password, username, display_name, role) VALUES (?, ?, ?, ?, 'admin')");
+        $stmt = $pdo->prepare("INSERT INTO users (email, password_hash, username, display_name, role) VALUES (?, ?, ?, ?, 'admin')");
         $stmt->execute([$adminEmail, $hashedPassword, $username, $adminName]);
     }
     
