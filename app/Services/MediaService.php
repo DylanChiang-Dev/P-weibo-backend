@@ -120,20 +120,27 @@ class MediaService {
      * Extract video duration using FFmpeg (if available)
      */
     private function extractDuration(string $videoPath): ?int {
-        // Check if FFmpeg is available
-        $ffprobe = shell_exec('which ffprobe 2>/dev/null');
-        if (!$ffprobe) {
+        if (!function_exists('shell_exec')) {
             return null;
         }
 
-        $cmd = sprintf(
-            'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>/dev/null',
-            escapeshellarg($videoPath)
-        );
-        
-        $output = shell_exec($cmd);
-        if ($output && is_numeric(trim($output))) {
-            return (int)round((float)trim($output));
+        try {
+            $ffprobe = @shell_exec('which ffprobe 2>/dev/null');
+            if (!$ffprobe) {
+                return null;
+            }
+
+            $cmd = sprintf(
+                'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>/dev/null',
+                escapeshellarg($videoPath)
+            );
+            
+            $output = @shell_exec($cmd);
+            if ($output && is_numeric(trim($output))) {
+                return (int)round((float)trim($output));
+            }
+        } catch (\Throwable $e) {
+            Logger::warn('ffmpeg_duration_failed', ['error' => $e->getMessage()]);
         }
 
         return null;
@@ -143,26 +150,33 @@ class MediaService {
      * Generate video thumbnail using FFmpeg (if available)
      */
     private function generateThumbnail(string $videoPath, string $base): ?string {
-        // Check if FFmpeg is available
-        $ffmpeg = shell_exec('which ffmpeg 2>/dev/null');
-        if (!$ffmpeg) {
+        if (!function_exists('shell_exec')) {
             return null;
         }
 
-        $thumbnailPath = $this->uploadPath . '/' . $base . '_thumb.jpg';
-        
-        // Extract frame at 1 second
-        $cmd = sprintf(
-            'ffmpeg -i %s -ss 00:00:01.000 -vframes 1 -vf scale=320:-1 %s 2>/dev/null',
-            escapeshellarg($videoPath),
-            escapeshellarg($thumbnailPath)
-        );
-        
-        exec($cmd, $output, $returnCode);
-        
-        if ($returnCode === 0 && file_exists($thumbnailPath)) {
-            @chmod($thumbnailPath, 0644);
-            return $thumbnailPath;
+        try {
+            // Check if FFmpeg is available
+            $ffmpeg = @shell_exec('which ffmpeg 2>/dev/null');
+            if (!$ffmpeg) {
+                return null;
+            }
+
+            $thumbnailPath = $this->uploadPath . '/' . $base . '_thumb.jpg';
+            
+            // Extract frame at 1 second (or 00:00:01)
+            $cmd = sprintf(
+                'ffmpeg -y -i %s -ss 00:00:01 -vframes 1 %s 2>/dev/null',
+                escapeshellarg($videoPath),
+                escapeshellarg($thumbnailPath)
+            );
+            
+            @shell_exec($cmd);
+            
+            if (file_exists($thumbnailPath) && filesize($thumbnailPath) > 0) {
+                return $thumbnailPath;
+            }
+        } catch (\Throwable $e) {
+            Logger::warn('ffmpeg_thumbnail_failed', ['error' => $e->getMessage()]);
         }
 
         return null;
