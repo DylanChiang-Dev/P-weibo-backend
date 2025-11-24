@@ -47,32 +47,64 @@ class PostService {
             }
 
             // Process videos
-            if (!empty($videoFiles)) {
-                $count = is_array($videoFiles['name']) ? count($videoFiles['name']) : 1;
-                for ($i = 0; $i < $count; $i++) {
-                    $file = [
-                        'name' => is_array($videoFiles['name']) ? $videoFiles['name'][$i] : $videoFiles['name'],
-                        'type' => is_array($videoFiles['type']) ? $videoFiles['type'][$i] : $videoFiles['type'],
-                        'tmp_name' => is_array($videoFiles['tmp_name']) ? $videoFiles['tmp_name'][$i] : $videoFiles['tmp_name'],
-                        'error' => is_array($videoFiles['error']) ? $videoFiles['error'][$i] : $videoFiles['error'],
-                        'size' => is_array($videoFiles['size']) ? $videoFiles['size'][$i] : $videoFiles['size'],
-                    ];
+        if (!empty($videoFiles)) {
+            $count = is_array($videoFiles['name']) ? count($videoFiles['name']) : 1;
+            Logger::info('video_upload_start', [
+                'count' => $count,
+                'files' => $videoFiles['name'] ?? 'unknown'
+            ]);
+            
+            for ($i = 0; $i < $count; $i++) {
+                $file = [
+                    'name' => is_array($videoFiles['name']) ? $videoFiles['name'][$i] : $videoFiles['name'],
+                    'type' => is_array($videoFiles['type']) ? $videoFiles['type'][$i] : $videoFiles['type'],
+                    'tmp_name' => is_array($videoFiles['tmp_name']) ? $videoFiles['tmp_name'][$i] : $videoFiles['tmp_name'],
+                    'error' => is_array($videoFiles['error']) ? $videoFiles['error'][$i] : $videoFiles['error'],
+                    'size' => is_array($videoFiles['size']) ? $videoFiles['size'][$i] : $videoFiles['size'],
+                ];
+                
+                try {
+                    Logger::info('video_processing', [
+                        'file_name' => $file['name'],
+                        'mime_type' => $file['type'],
+                        'size' => $file['size'],
+                        'tmp_name' => $file['tmp_name'],
+                        'post_id' => $postId
+                    ]);
                     
-                    try {
-                        $res = $this->mediaService->process($file);
-                        PostVideo::add(
-                            $postId,
-                            $res['file_path'],
-                            $res['thumbnail_path'],
-                            $res['duration'],
-                            $res['file_size'],
-                            $res['mime_type']
-                        );
-                    } catch (\Throwable $e) {
-                        Logger::warn('video_process_failed', ['error' => $e->getMessage()]);
-                    }
+                    $res = $this->mediaService->process($file);
+                    
+                    Logger::info('video_processed', [
+                        'file_path' => $res['file_path'],
+                        'mime_type' => $res['mime_type'],
+                        'file_size' => $res['file_size']
+                    ]);
+                    
+                    PostVideo::add(
+                        $postId,
+                        $res['file_path'],
+                        $res['thumbnail_path'],
+                        $res['duration'],
+                        $res['file_size'],
+                        $res['mime_type']
+                    );
+                    
+                    Logger::info('video_saved_to_db', [
+                        'post_id' => $postId,
+                        'file_path' => $res['file_path']
+                    ]);
+                } catch (\Throwable $e) {
+                    Logger::error('video_process_failed', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'file' => $file['name'] ?? 'unknown',
+                        'post_id' => $postId,
+                        'line' => $e->getLine(),
+                        'file_error_code' => $file['error']
+                    ]);
                 }
             }
+        }
             
             Database::commit();
             return $postId;

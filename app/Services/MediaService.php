@@ -27,13 +27,30 @@ class MediaService {
      * @throws \RuntimeException on validation or processing errors
      */
     public function process(array $file): array {
+        Logger::info('media_service_process_start', [
+            'file_name' => $file['name'] ?? 'unknown',
+            'file_size' => $file['size'] ?? 0,
+            'upload_path' => $this->uploadPath,
+            'path_exists' => is_dir($this->uploadPath),
+            'path_writable' => is_writable($this->uploadPath)
+        ]);
+        
         // Validate upload
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            throw new \RuntimeException('Upload error: ' . $this->getUploadErrorMessage($file['error']));
+            $errorMsg = $this->getUploadErrorMessage($file['error']);
+            Logger::error('upload_error', [
+                'error' => $errorMsg,
+                'code' => $file['error']
+            ]);
+            throw new \RuntimeException('Upload error: ' . $errorMsg);
         }
 
         $fileSize = $file['size'] ?? 0;
         if ($fileSize > $this->maxBytes) {
+            Logger::error('file_too_large', [
+                'size' => $fileSize,
+                'max' => $this->maxBytes
+            ]);
             throw new \RuntimeException('File too large. Max: ' . ($this->maxBytes / 1024 / 1024) . 'MB');
         }
 
@@ -41,7 +58,16 @@ class MediaService {
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
         
+        Logger::info('file_mime_detected', [
+            'mime' => $mime,
+            'allowed' => $this->allowedMimeTypes
+        ]);
+        
         if (!in_array($mime, $this->allowedMimeTypes, true)) {
+            Logger::error('invalid_mime_type', [
+                'mime' => $mime,
+                'allowed' => $this->allowedMimeTypes
+            ]);
             throw new \RuntimeException('Invalid video format. Allowed: MP4, WebM, MOV, AVI');
         }
 
@@ -50,12 +76,30 @@ class MediaService {
         $base = bin2hex(random_bytes(16));
         $videoPath = $this->uploadPath . '/' . $base . '.' . $ext;
 
+        Logger::info('moving_uploaded_file', [
+            'from' => $file['tmp_name'],
+            'to' => $videoPath,
+            'tmp_exists' => file_exists($file['tmp_name']),
+            'dest_dir_writable' => is_writable($this->uploadPath)
+        ]);
+
         // Move uploaded file
         if (!move_uploaded_file($file['tmp_name'], $videoPath)) {
+            Logger::error('move_uploaded_file_failed', [
+                'tmp_name' => $file['tmp_name'],
+                'destination' => $videoPath,
+                'tmp_exists' => file_exists($file['tmp_name']),
+                'dir_writable' => is_writable($this->uploadPath),
+                'dir_exists' => is_dir($this->uploadPath)
+            ]);
             throw new \RuntimeException('Failed to save video file');
         }
 
         @chmod($videoPath, 0644);
+        Logger::info('video_file_saved', [
+            'path' => $videoPath,
+            'size' => filesize($videoPath)
+        ]);
 
         // Try to extract video metadata (duration) if FFmpeg is available
         $duration = $this->extractDuration($videoPath);
