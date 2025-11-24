@@ -22,16 +22,21 @@ class CorsMiddleware implements Middleware {
         // Support multiple allowed origins (comma separated)
         $allowedOrigins = array_map('trim', explode(',', $this->allowedOrigin));
         
-        if ($origin && (in_array($origin, $allowedOrigins) || in_array('*', $allowedOrigins))) {
+        // Check if origin is allowed
+        $isAllowed = $origin && (in_array($origin, $allowedOrigins) || in_array('*', $allowedOrigins));
+        
+        if ($isAllowed) {
+            // Set CORS headers for all requests (including preflight)
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+            header('Access-Control-Max-Age: 86400'); // Cache preflight for 24 hours
             header('Vary: Origin');
         }
 
-        // Handle preflight requests
+        // Handle preflight OPTIONS requests
         if ($request->method === 'OPTIONS') {
-            header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, Authorization');
             http_response_code(204);
             exit;
         }
