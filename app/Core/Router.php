@@ -47,6 +47,16 @@ class Router {
     public function dispatch(): void {
         $method = $this->request->method;
         $path = rtrim($this->request->path, '/') ?: '/';
+        
+        // Handle OPTIONS preflight requests
+        // Run global middleware (including CORS) then return 204
+        if ($method === 'OPTIONS') {
+            $this->runMiddlewarePipeline($this->globalMiddleware, function() {
+                // OPTIONS handled by CorsMiddleware, no further action needed
+            }, []);
+            return;
+        }
+        
         $candidates = $this->routes[$method] ?? [];
         
         foreach ($candidates as [$pattern, $handler, $opts]) {
