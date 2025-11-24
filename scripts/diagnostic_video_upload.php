@@ -35,7 +35,7 @@ echo "4. Database Connection:\n";
 try {
     require_once __DIR__ . '/../app/Core/Database.php';
     App\Core\Database::init($config['db']);
-    $pdo = App\Core\Database::connection();
+    $pdo = App\Core\Database::getPdo();
     echo "   Connection: OK\n";
     
     // Check post_videos table
