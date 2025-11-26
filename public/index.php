@@ -76,6 +76,7 @@ $router->get('/api/posts', [PostController::class, 'list'], ['middleware' => [Op
 $router->get('/api/posts/{id}', [PostController::class, 'get'], ['middleware' => [OptionalAuthMiddleware::class]]);
 $router->delete('/api/posts/{id}', [PostController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);
 $router->patch('/api/posts/{id}', [PostController::class, 'update'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/posts/{id}/media', [PostController::class, 'updateWithMedia'], ['middleware' => [AdminMiddleware::class]]);
 $router->post('/api/posts/{id}/like', [PostController::class, 'like'], ['auth' => true]);
 $router->post('/api/posts/{id}/comments', [PostController::class, 'createComment']); // Public access for guest comments
 $router->get('/api/posts/{id}/comments', [PostController::class, 'getComments']);

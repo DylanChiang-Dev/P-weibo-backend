@@ -155,5 +155,55 @@ class PostController {
         );
         ApiResponse::success($result);
     }
+
+    /**
+     * Update post with media files (POST endpoint to support file uploads)
+     * 
+     * This is a workaround for PHP's limitation: PATCH requests don't populate $_FILES.
+     * Frontend should use this endpoint when updating posts with new images/videos.
+     */
+    public function updateWithMedia(Request $req, array $params): void {
+        // Reuse the exact same logic as update()
+        $userId = (int)$req->user['id'];
+        $postId = (int)($params['id'] ?? 0);
+        
+        // Support both JSON and FormData
+        $content = $_POST['content'] ?? $req->body['content'] ?? null;
+        $createdAt = $_POST['created_at'] ?? $req->body['created_at'] ?? null;
+        $visibility = $_POST['visibility'] ?? $req->body['visibility'] ?? null;
+        
+        // Parse delete_images[] and delete_videos[] arrays
+        $deleteImageIds = [];
+        $deleteVideoIds = [];
+        
+        if (isset($_POST['delete_images'])) {
+            $deleteImageIds = is_array($_POST['delete_images']) 
+                ? array_map('intval', $_POST['delete_images']) 
+                : [intval($_POST['delete_images'])];
+        }
+        
+        if (isset($_POST['delete_videos'])) {
+            $deleteVideoIds = is_array($_POST['delete_videos']) 
+                ? array_map('intval', $_POST['delete_videos']) 
+                : [intval($_POST['delete_videos'])];
+        }
+        
+        // Get uploaded files (works with POST!)
+        $imageFiles = $req->files['images'] ?? [];
+        $videoFiles = $req->files['videos'] ?? [];
+
+        $result = $this->postService->updatePost(
+            $userId, 
+            $postId, 
+            $content, 
+            $createdAt,
+            $visibility,
+            $deleteImageIds,
+            $deleteVideoIds,
+            $imageFiles,
+            $videoFiles
+        );
+        ApiResponse::success($result);
+    }
 }
 ?>
