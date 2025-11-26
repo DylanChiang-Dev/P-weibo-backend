@@ -73,7 +73,7 @@ class AuthController {
         
         if (!$refresh) {
             Response::clearCookie('refresh_token');
-            throw new ValidationException('Missing refresh token');
+            ApiResponse::error('Missing refresh token', 401);
         }
 
         try {
@@ -84,9 +84,9 @@ class AuthController {
             ]);
             unset($tokens['refresh_token']);
             ApiResponse::success($tokens);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
              Response::clearCookie('refresh_token');
-             throw $e;
+             ApiResponse::error('Refresh token invalid or expired', 401);
         }
     }
 
