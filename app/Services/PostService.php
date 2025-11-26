@@ -282,6 +282,20 @@ class PostService {
                 }
             }
 
+            // Debug: Log file upload information
+            Logger::info('update_post_files_debug', [
+                'post_id' => $postId,
+                'imageFiles_empty' => empty($imageFiles),
+                'videoFiles_empty' => empty($videoFiles),
+                'imageFiles_isset' => isset($imageFiles),
+                'imageFiles_is_array' => is_array($imageFiles),
+                'imageFiles_keys' => is_array($imageFiles) ? array_keys($imageFiles) : 'N/A',
+                'imageFiles_name' => $imageFiles['name'] ?? 'N/A',
+                'imageFiles_error' => $imageFiles['error'] ?? 'N/A', 
+                'FILES_images' => $_FILES['images'] ?? 'N/A',
+                'FILES_videos' => $_FILES['videos'] ?? 'N/A'
+            ]);
+
             // Add new images
             if (!empty($imageFiles)) {
                 $count = is_array($imageFiles['name']) ? count($imageFiles['name']) : 1;
