@@ -80,6 +80,7 @@ $router->post('/api/posts/{id}/media', [PostController::class, 'updateWithMedia'
 $router->post('/api/posts/{id}/like', [PostController::class, 'like'], ['auth' => true]);
 $router->post('/api/posts/{id}/comments', [PostController::class, 'createComment']); // Public access for guest comments
 $router->get('/api/posts/{id}/comments', [PostController::class, 'getComments']);
+$router->delete('/api/comments/{id}', [PostController::class, 'deleteComment'], ['auth' => true]);
 $router->post('/api/posts/{id}/pin', [PostController::class, 'pin'], ['middleware' => [AdminMiddleware::class]]);
 $router->post('/api/posts/{id}/unpin', [PostController::class, 'unpin'], ['middleware' => [AdminMiddleware::class]]);
 

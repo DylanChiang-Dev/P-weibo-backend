@@ -205,5 +205,26 @@ class PostController {
         );
         ApiResponse::success($result);
     }
+
+    public function deleteComment(Request $req, array $params): void {
+        $commentId = (int)($params['id'] ?? 0);
+        $comment = Comment::getById($commentId);
+        
+        if (!$comment) {
+            throw new NotFoundException('Comment not found');
+        }
+        
+        // Permission check: comment author OR admin
+        $currentUserId = $req->user['id'] ?? null;
+        $isAuthor = $currentUserId && (int)$comment['user_id'] === (int)$currentUserId;
+        $isAdmin = isset($req->user['role']) && $req->user['role'] === 'admin';
+        
+        if (!$isAuthor && !$isAdmin) {
+            throw new ForbiddenException('You can only delete your own comments');
+        }
+        
+        Comment::delete($commentId);
+        ApiResponse::success();
+    }
 }
 ?>

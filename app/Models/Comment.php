@@ -32,5 +32,17 @@ class Comment {
             ->orderBy('comments.created_at', 'ASC')
             ->get();
     }
+
+    public static function getById(int $id): ?array {
+        return QueryBuilder::table('comments')
+            ->where('id', '=', $id)
+            ->first();
+    }
+
+    public static function delete(int $id): void {
+        QueryBuilder::table('comments')
+            ->where('id', '=', $id)
+            ->delete();
+    }
 }
 ?>
