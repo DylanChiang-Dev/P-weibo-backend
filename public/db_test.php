@@ -6,8 +6,8 @@ require_once __DIR__ . '/../app/Core/QueryBuilder.php'; // 可能会用到
 
 try {
     $config = config(); // 使用 config() 函数
-    $db = new \App\Core\Database($config['db']);
-    $pdo = $db->getPdo();
+    \App\Core\Database::init($config['db']); // 静态初始化
+    $pdo = \App\Core\Database::getPdo();
 
     echo "<h3>Current Database: " . $config['db']['name'] . "</h3>";
 
