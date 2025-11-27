@@ -308,5 +308,93 @@ class BlogController {
             'count' => count($formatted)
         ]);
     }
+
+    /**
+     * Auto-save article (Admin only)
+     */
+    public function autoSave(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        $article = BlogArticle::getById($articleId);
+        
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        $data = is_array($req->body) ? $req->body : [];
+        
+        // Only update allowed fields for auto-save
+        $updateData = [];
+        $allowedFields = ['title', 'content', 'excerpt'];
+        
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        if (!empty($updateData)) {
+            $this->blogService->autoSaveArticle($articleId, $updateData);
+        }
+
+        ApiResponse::success(['message' => 'Auto-saved successfully']);
+    }
+
+    /**
+     * Get article revisions (Admin only)
+     */
+    public function getRevisions(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        $article = BlogArticle::getById($articleId);
+        
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        $revisions = \App\Models\BlogArticleRevision::getByArticle($articleId);
+        
+        $formatted = array_map(function($rev) {
+            return [
+                'revision_number' => (int)$rev['revision_number'],
+                'title'=> $rev['title'],
+                'excerpt' => $rev['excerpt'],
+                'created_at' => $rev['created_at'],
+                'created_by' => [
+                    'email' => $rev['email'],
+                    'display_name' => $rev['display_name']
+                ]
+            ];
+        }, $revisions);
+
+        ApiResponse::success($formatted);
+    }
+
+    /**
+     * Restore article to specific revision (Admin only)
+     */
+    public function restoreRevision(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        $revNumber = (int)($params['revision'] ?? 0);
+        
+        $article = BlogArticle::getById($articleId);
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        $revision = \App\Models\BlogArticleRevision::getByRevisionNumber($articleId, $revNumber);
+        if (!$revision) {
+            throw new NotFoundException('Revision not found');
+        }
+
+        // Restore content
+        $userId = (int)$req->user['id'];
+        $this->blogService->updateArticle($articleId, [
+            'title' => $revision['title'],
+            'content' => $revision['content'],
+            'excerpt' => $revision['excerpt'],
+            '_user_id' => $userId
+        ]);
+
+        ApiResponse::success(['message' => 'Article restored to revision ' . $revNumber]);
+    }
 }
 ?>

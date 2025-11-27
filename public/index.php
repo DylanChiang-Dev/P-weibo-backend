@@ -95,6 +95,10 @@ $router->get('/api/blog/articles/{slug}', [BlogController::class, 'get'], ['midd
 $router->put('/api/blog/articles/{id}', [BlogController::class, 'update'], ['middleware' => [AdminMiddleware::class]]);
 $router->delete('/api/blog/articles/{id}', [BlogController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);
 $router->post('/api/blog/articles/{id}/publish', [BlogController::class, 'publish'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/blog/articles/{id}/auto-save', [BlogController::class, 'autoSave'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/blog/articles/{id}/revisions', [BlogController::class, 'getRevisions'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/blog/articles/{id}/restore/{revision}', [BlogController::class, 'restoreRevision'], ['middleware' => [AdminMiddleware::class]]);
+
 
 $router->get('/api/blog/categories', [BlogCategoryController::class, 'list']);
 $router->post('/api/blog/categories', [BlogCategoryController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);

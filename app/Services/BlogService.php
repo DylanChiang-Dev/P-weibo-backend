@@ -108,7 +108,7 @@ class BlogService {
     /**
      * Update article
      */
-    public function updateArticle(int $id, array $data): void {
+    public function updateArticle(int $id, array $data, bool $createRevision = true): void {
         // Update slug if title changed
         $article = BlogArticle::getById($id);
         if ($article && isset($data['title']) && $data['title'] !== $article['title']) {
@@ -117,10 +117,28 @@ class BlogService {
             }
         }
 
+        // Create revision before updating (if content changed)
+        if ($createRevision && $article) {
+            $contentChanged = isset($data['title']) && $data['title'] !== $article['title']
+                           || isset($data['content']) && $data['content'] !== $article['content'];
+            
+            if ($contentChanged) {
+                $userId = $data['_user_id'] ?? 1;  // Should be passed from controller
+                \App\Models\BlogArticleRevision::create($id, [
+                    'title' => $article['title'],
+                    'content' => $article['content'],
+                    'excerpt' => $article['excerpt']
+                ], $userId);
+                
+                // Prune old revisions
+                \App\Models\BlogArticleRevision::pruneOldRevisions($id, 20);
+            }
+        }
+
         // Extract categories and tags
         $categoryIds = $data['category_ids'] ?? null;
         $tagIds = $data['tag_ids'] ?? null;
-        unset($data['category_ids'], $data['tag_ids']);
+        unset($data['category_ids'], $data['tag_ids'], $data['_user_id']);
 
         // Update article
         BlogArticle::update($id, $data);
@@ -134,6 +152,14 @@ class BlogService {
         }
 
         Logger::info('blog_article_updated', ['id' => $id]);
+    }
+
+    /**
+     * Auto-save article (no revision created)
+     */
+    public function autoSaveArticle(int $id, array $data): void {
+        $data['last_auto_saved_at'] = date('Y-m-d H:i:s');
+        $this->updateArticle($id, $data, false);  // Don't create revision
     }
 
     /**
