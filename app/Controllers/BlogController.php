@@ -66,42 +66,29 @@ class BlogController {
      * Get article list
      */
     public function list(Request $req): void {
-        try {
-            $limit = min((int)($req->query['limit'] ?? 20), 50);
-            $cursor = $req->query['cursor'] ?? null;
-            
-            // Only show published articles to non-admin
-            $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
-            $status = $isAdmin && isset($req->query['status']) ? $req->query['status'] : 'published';
+        $limit = min((int)($req->query['limit'] ?? 20), 50);
+        $cursor = $req->query['cursor'] ?? null;
+        
+        // Only show published articles to non-admin
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
+        $status = $isAdmin && isset($req->query['status']) ? $req->query['status'] : 'published';
 
-            $articles = $this->blogService->getArticles($limit, $cursor, $status);
+        $articles = $this->blogService->getArticles($limit, $cursor, $status);
 
-            // Generate next cursor
-            $nextCursor = null;
-            if (count($articles) === $limit) {
-                $last = end($articles);
-                $nextCursor = base64_encode($last['created_at'] . '|' . $last['id']);
-            }
-
-            ApiResponse::success([
-                'items' => $articles,
-                'meta' => [
-                    'has_more' => $nextCursor !== null,
-                    'cursor' => $nextCursor
-                ]
-            ]);
-        } catch (\Throwable $e) {
-            // Temporary debug output
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            exit;
+        // Generate next cursor
+        $nextCursor = null;
+        if (count($articles) === $limit) {
+            $last = end($articles);
+            $nextCursor = base64_encode($last['created_at'] . '|' . $last['id']);
         }
+
+        ApiResponse::success([
+            'items' => $articles,
+            'meta' => [
+                'has_more' => $nextCursor !== null,
+                'cursor' => $nextCursor
+            ]
+        ]);
     }
 
     /**
