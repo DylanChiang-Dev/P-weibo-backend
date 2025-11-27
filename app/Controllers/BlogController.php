@@ -70,7 +70,7 @@ class BlogController {
         $cursor = $req->query['cursor'] ?? null;
         
         // Only show published articles to non-admin
-        $isAdmin = isset($req->user['role']) && $req->user['role'] === 'admin';
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
         $status = $isAdmin && isset($req->query['status']) ? $req->query['status'] : 'published';
 
         $articles = $this->blogService->getArticles($limit, $cursor, $status);
@@ -98,7 +98,7 @@ class BlogController {
         $slug = $params['slug'] ?? '';
         
         // Increment view count for non-admin
-        $isAdmin = isset($req->user['role']) && $req->user['role'] === 'admin';
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
         $incrementView = !$isAdmin;
 
         $article = $this->blogService->getArticle($slug, $incrementView);

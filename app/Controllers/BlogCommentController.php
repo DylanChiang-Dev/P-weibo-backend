@@ -19,7 +19,7 @@ class BlogCommentController {
         $articleId = (int)($params['id'] ?? 0);
         
         // Admin can see all, others only approved
-        $isAdmin = isset($req->user['role']) && $req->user['role'] === 'admin';
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
         $status = $isAdmin && isset($req->query['status']) ? $req->query['status'] : 'approved';
 
         $comments = BlogComment::getByArticle($articleId, $status);
