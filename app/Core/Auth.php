@@ -70,14 +70,26 @@ class Auth {
             $userId = (int)$payload['sub'];
             
             // Fetch user from database to get role
-            $user = \App\Models\User::findById($userId);
-            if (!$user) {
-                throw new \RuntimeException('User not found');
+            try {
+                $user = \App\Models\User::findById($userId);
+                if ($user) {
+                    return [
+                        'id' => $userId,
+                        'role' => $user['role'] ?? 'user'
+                    ];
+                }
+            } catch (\Throwable $dbError) {
+                // Database error, but token is valid - return basic info
+                \App\Core\Logger::warning('database_error_in_auth', [
+                    'user_id' => $userId,
+                    'error' => $dbError->getMessage()
+                ]);
             }
             
+            // Fallback: return basic info without role
             return [
                 'id' => $userId,
-                'role' => $user['role'] ?? 'user'
+                'role' => 'user'
             ];
         } catch (\Throwable $e) {
             throw new UnauthorizedException('Invalid or expired token');
