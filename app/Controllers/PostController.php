@@ -9,6 +9,7 @@ use App\Exceptions\ValidationException;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ForbiddenException;
 use App\Services\PostService;
+use App\Models\Comment;
 
 class PostController {
     private PostService $postService;
