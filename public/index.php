@@ -84,6 +84,24 @@ $router->delete('/api/comments/{id}', [PostController::class, 'deleteComment'], 
 $router->post('/api/posts/{id}/pin', [PostController::class, 'pin'], ['middleware' => [AdminMiddleware::class]]);
 $router->post('/api/posts/{id}/unpin', [PostController::class, 'unpin'], ['middleware' => [AdminMiddleware::class]]);
 
+// Blog
+use App\Controllers\BlogController;
+use App\Controllers\BlogCategoryController;
+use App\Controllers\BlogTagController;
+
+$router->post('/api/blog/articles', [BlogController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/blog/articles', [BlogController::class, 'list'], ['middleware' => [OptionalAuthMiddleware::class]]);
+$router->get('/api/blog/articles/{slug}', [BlogController::class, 'get'], ['middleware' => [OptionalAuthMiddleware::class]]);
+$router->put('/api/blog/articles/{id}', [BlogController::class, 'update'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/blog/articles/{id}', [BlogController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/blog/articles/{id}/publish', [BlogController::class, 'publish'], ['middleware' => [AdminMiddleware::class]]);
+
+$router->get('/api/blog/categories', [BlogCategoryController::class, 'list']);
+$router->post('/api/blog/categories', [BlogCategoryController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
+
+$router->get('/api/blog/tags', [BlogTagController::class, 'list']);
+$router->post('/api/blog/tags', [BlogTagController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
+
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
