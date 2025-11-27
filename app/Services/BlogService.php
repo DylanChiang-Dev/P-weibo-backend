@@ -185,6 +185,28 @@ class BlogService {
     }
 
     /**
+     * Get formatted article by ID (for editing)
+     */
+    public function getArticleById(int $id, bool $incrementView = false): ?array {
+        $article = BlogArticle::getById($id);
+        if (!$article) return null;
+
+        $articleId = (int)$article['id'];
+
+        // Increment view count (usually false for editing)
+        if ($incrementView) {
+            BlogArticle::incrementViewCount($articleId);
+            $article['view_count'] = ((int)$article['view_count']) + 1;
+        }
+
+        // Get categories and tags
+        $article['categories'] = BlogArticle::getCategories($articleId);
+        $article['tags'] = BlogArticle::getTags($articleId);
+
+        return $this->formatArticle($article);
+    }
+
+    /**
      * Get article list with pagination
      */
     public function getArticles(int $limit = 20, ?string $cursor = null, string $status = 'published'): array {

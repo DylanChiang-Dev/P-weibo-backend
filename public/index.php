@@ -91,6 +91,7 @@ use App\Controllers\BlogTagController;
 
 $router->post('/api/blog/articles', [BlogController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
 $router->get('/api/blog/articles', [BlogController::class, 'list'], ['middleware' => [OptionalAuthMiddleware::class]]);
+$router->get('/api/blog/articles/id/{id}', [BlogController::class, 'getById'], ['middleware' => [OptionalAuthMiddleware::class]]);
 $router->get('/api/blog/articles/{slug}', [BlogController::class, 'get'], ['middleware' => [OptionalAuthMiddleware::class]]);
 $router->put('/api/blog/articles/{id}', [BlogController::class, 'update'], ['middleware' => [AdminMiddleware::class]]);
 $router->delete('/api/blog/articles/{id}', [BlogController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);

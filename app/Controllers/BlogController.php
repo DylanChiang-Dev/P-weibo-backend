@@ -120,6 +120,33 @@ class BlogController {
     }
 
     /**
+     * Get article by ID (for admin/editor use)
+     */
+    public function getById(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        
+        // This endpoint is primarily for admin editing, so we don't increment view count
+        $article = $this->blogService->getArticleById($id);
+        
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        // Check permissions - only admin can see unpublished articles
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
+        
+        if ($article['status'] !== 'published' && !$isAdmin) {
+            throw new NotFoundException('Article not found');
+        }
+
+        if ($article['visibility'] === 'private' && !$isAdmin) {
+            throw new ForbiddenException('This article is private');
+        }
+
+        ApiResponse::success($article);
+    }
+
+    /**
      * Update article (Admin only)
      */
     public function update(Request $req, array $params): void {
