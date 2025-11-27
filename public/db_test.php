@@ -1,8 +1,11 @@
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
+// 手动加载必要文件，不依赖 composer
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../app/Core/Database.php';
+require_once __DIR__ . '/../app/Core/QueryBuilder.php'; // 可能会用到
 
 try {
-    $config = require __DIR__ . '/../config/config.php';
+    $config = config(); // 使用 config() 函数
     $db = new \App\Core\Database($config['db']);
     $pdo = $db->getPdo();
 
