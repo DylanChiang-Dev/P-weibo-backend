@@ -198,5 +198,48 @@ class BlogController {
 
         ApiResponse::success();
     }
+
+    /**
+     * Toggle like for an article
+     */
+    public function like(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        $article = BlogArticle::getById($articleId);
+        
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        $userId = $req->user['id'] ?? null;
+        $ipAddress = $req->ip();
+
+        $isLiked = \App\Models\BlogArticleLike::toggle($articleId, $userId, $ipAddress);
+
+        // Update like count
+        $likeCount = \App\Models\BlogArticleLike::count($articleId);
+        BlogArticle::update($articleId, ['like_count' => $likeCount]);
+
+        ApiResponse::success([
+            'liked' => $isLiked,
+            'like_count' => $likeCount
+        ]);
+    }
+
+    /**
+     * Get like status
+     */
+    public function getLikeStatus(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        $userId = $req->user['id'] ?? null;
+        $ipAddress = $req->ip();
+
+        $isLiked = \App\Models\BlogArticleLike::isLiked($articleId, $userId, $ipAddress);
+        $likeCount = \App\Models\BlogArticleLike::count($articleId);
+
+        ApiResponse::success([
+            'liked' => $isLiked,
+            'like_count' => $likeCount  
+        ]);
+    }
 }
 ?>

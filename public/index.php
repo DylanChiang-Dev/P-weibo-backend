@@ -102,6 +102,20 @@ $router->post('/api/blog/categories', [BlogCategoryController::class, 'create'],
 $router->get('/api/blog/tags', [BlogTagController::class, 'list']);
 $router->post('/api/blog/tags', [BlogTagController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
 
+// Blog Comments & Likes
+use App\Controllers\BlogCommentController;
+
+$router->get('/api/blog/articles/{id}/comments', [BlogCommentController::class, 'list']);
+$router->post('/api/blog/articles/{id}/comments', [BlogCommentController::class, 'create']); // Guests allowed
+$router->get('/api/blog/comments/pending', [BlogCommentController::class, 'getPending'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/blog/comments/{id}/approve', [BlogCommentController::class, 'approve'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/blog/comments/{id}/reject', [BlogCommentController::class, 'reject'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/blog/comments/{id}', [BlogCommentController::class, 'delete'], ['middleware' => [AdminMiddleware::class]]);
+
+$router->post('/api/blog/articles/{id}/like', [BlogController::class, 'like']); // Guests allowed
+$router->get('/api/blog/articles/{id}/like-status', [BlogController::class, 'getLikeStatus']);
+
+
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)

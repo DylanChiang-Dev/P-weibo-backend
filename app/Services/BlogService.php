@@ -45,6 +45,11 @@ class BlogService {
             $data['slug'] = $this->generateSlug($data['title']);
         }
 
+        // Auto-generate excerpt if not provided
+        if (empty($data['excerpt']) && !empty($data['content'])) {
+            $data['excerpt'] = $this->extractExcerpt($data['content']);
+        }
+
         // Extract categories and tags
         $categoryIds = $data['category_ids'] ?? [];
         $tagIds = $data['tag_ids'] ?? [];
@@ -63,6 +68,41 @@ class BlogService {
 
         Logger::info('blog_article_created', ['id' => $articleId, 'title' => $data['title']]);
         return $articleId;
+    }
+
+    /**
+     * Extract excerpt from content
+     */
+    private function extractExcerpt(string $content, int $length = 200): string {
+        // Remove Markdown syntax
+        $text = $content;
+        
+        // Remove headings
+        $text = preg_replace('/^#+\s+/m', '', $text);
+        
+        // Remove bold/italic
+        $text = preg_replace('/[\*_]{1,2}([^\*_]+)[\*_]{1,2}/', '$1', $text);
+        
+        // Remove links [text](url)
+        $text = preg_replace('/\[([^\]]+)\]\([^\)]+\)/', '$1', $text);
+        
+        // Remove code blocks
+        $text = preg_replace('/```[^`]*```/', '', $text);
+        $text = preg_replace('/`([^`]+)`/', '$1', $text);
+        
+        // Remove images
+        $text = preg_replace('/!\[([^\]]*)\]\([^\)]+\)/', '', $text);
+        
+        // Clean up whitespace
+        $text = preg_replace('/\s+/', ' ', $text);
+        $text = trim($text);
+        
+        // Truncate
+        if (mb_strlen($text) > $length) {
+            $text = mb_substr($text, 0, $length) . '...';
+        }
+        
+        return $text;
     }
 
     /**
