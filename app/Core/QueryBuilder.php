@@ -187,6 +187,19 @@ class QueryBuilder {
         return Database::execute($sql, $this->params);
     }
 
+    public function increment(string $column, int $amount = 1): int {
+        $sql = sprintf(
+            'UPDATE %s SET %s = %s + ? %s',
+            $this->table,
+            $column,
+            $column,
+            $this->compileWhere()
+        );
+        
+        $params = array_merge([$amount], $this->params);
+        return Database::execute($sql, $params);
+    }
+
     protected function compileSelect(): string {
         $sql = sprintf(
             'SELECT %s FROM %s%s%s%s%s%s',
