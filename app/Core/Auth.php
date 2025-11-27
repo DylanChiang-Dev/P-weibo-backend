@@ -67,7 +67,18 @@ class Auth {
     public static function requireAccess(?string $token): array {
         try {
             $payload = self::verifyAccessToken($token);
-            return ['id' => (int)$payload['sub']];
+            $userId = (int)$payload['sub'];
+            
+            // Fetch user from database to get role
+            $user = \App\Models\User::findById($userId);
+            if (!$user) {
+                throw new \RuntimeException('User not found');
+            }
+            
+            return [
+                'id' => $userId,
+                'role' => $user['role'] ?? 'user'
+            ];
         } catch (\Throwable $e) {
             throw new UnauthorizedException('Invalid or expired token');
         }
