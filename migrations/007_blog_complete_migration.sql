@@ -1,13 +1,13 @@
 -- =====================================================
--- 博客功能完整迁移
+-- 博客功能完整迁移 (修复版)
 -- 包含：基础表、评论点赞、版本历史、SEO字段
--- 执行：mysql -u root -p weibo_clone < 007_blog_complete_migration.sql
+-- 修复：user_id 类型调整为 BIGINT UNSIGNED 以匹配 users 表
 -- =====================================================
 
 -- 1. 博客文章表
 CREATE TABLE IF NOT EXISTS blog_articles (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     excerpt TEXT,
@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS blog_articles (
 -- 2. 博客分类表
 CREATE TABLE IF NOT EXISTS blog_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
+    name VARCHAR(50) NOT NULL,
+    slug VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_slug (slug)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. 博客标签表
@@ -48,8 +48,7 @@ CREATE TABLE IF NOT EXISTS blog_tags (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     slug VARCHAR(50) NOT NULL UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_slug (slug)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. 文章-分类关联表
@@ -78,7 +77,7 @@ CREATE TABLE IF NOT EXISTS blog_article_tags (
 CREATE TABLE IF NOT EXISTS blog_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     article_id INT NOT NULL,
-    user_id INT NULL,
+    user_id BIGINT UNSIGNED NULL,
     author_name VARCHAR(100),
     author_email VARCHAR(255),
     content TEXT NOT NULL,
@@ -97,7 +96,7 @@ CREATE TABLE IF NOT EXISTS blog_comments (
 CREATE TABLE IF NOT EXISTS blog_article_likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     article_id INT NOT NULL,
-    user_id INT NULL,
+    user_id BIGINT UNSIGNED NULL,
     ip_address VARCHAR(45),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES blog_articles(id) ON DELETE CASCADE,
@@ -115,7 +114,7 @@ CREATE TABLE IF NOT EXISTS blog_article_revisions (
     content LONGTEXT NOT NULL,
     excerpt TEXT,
     revision_number INT NOT NULL,
-    created_by INT NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES blog_articles(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id),
@@ -124,12 +123,10 @@ CREATE TABLE IF NOT EXISTS blog_article_revisions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 插入默认分类
-INSERT INTO blog_categories (name, slug, description) VALUES
-('技术', 'tech', '技术相关文章'),
-('生活', 'life', '生活随笔'),
-('随笔', 'notes', '随手记录')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
+INSERT IGNORE INTO blog_categories (name, slug, description) VALUES 
+('Technology', 'technology', 'Tech news and tutorials'),
+('Life', 'life', 'Daily life sharing'),
+('Coding', 'coding', 'Programming notes');
 
 -- 完成
-SELECT '✅ 博客数据库迁移完成！' as message;
-SELECT '已创建 8 张表：blog_articles, blog_categories, blog_tags, blog_article_categories, blog_article_tags, blog_comments, blog_article_likes, blog_article_revisions' as info;
+SELECT '✅ 博客数据库迁移完成！' as status;
