@@ -241,5 +241,72 @@ class BlogController {
             'like_count' => $likeCount  
         ]);
     }
+
+    /**
+     * Search articles (full-text search)
+     */
+    public function search(Request $req): void {
+        $keyword = $req->query['q'] ?? '';
+        
+        if (empty($keyword)) {
+            throw new ValidationException('Search keyword is required');
+        }
+
+        $limit = min((int)($req->query['limit'] ?? 20), 50);
+        
+        $db = \App\Core\Database::getInstance();
+        $pdo = $db->getPdo();
+        
+        // Use FULLTEXT search
+        $sql = "
+            SELECT 
+                blog_articles.*,
+                users.email,
+                users.display_name,
+                users.avatar_path,
+                MATCH(blog_articles.title, blog_articles.content) AGAINST(:keyword IN NATURAL LANGUAGE MODE) as relevance
+            FROM blog_articles
+            LEFT JOIN users ON blog_articles.user_id = users.id
+            WHERE blog_articles.status = 'published'
+            AND MATCH(blog_articles.title, blog_articles.content) AGAINST(:keyword IN NATURAL LANGUAGE MODE)
+            ORDER BY relevance DESC, blog_articles.published_at DESC
+            LIMIT :limit
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':keyword', $keyword, \PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $articles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Format results
+        $formatted = [];
+        foreach ($articles as $article) {
+            $articleId = (int)$article['id'];
+            $article['categories'] = BlogArticle::getCategories($articleId);
+            $article['tags'] = BlogArticle::getTags($articleId);
+            $formatted[] = [
+                'id' => (int)$article['id'],
+                'title' => $article['title'],
+                'slug' => $article['slug'],
+                'excerpt' => $article['excerpt'],
+                'cover_image' => $article['cover_image'],
+                'published_at' => $article['published_at'],
+                'relevance' => (float)$article['relevance'],
+                'author' => [
+                    'display_name' => $article['display_name'] ?? $article['email'],
+                ],
+                'categories' => $article['categories'],
+                'tags' => $article['tags'],
+            ];
+        }
+        
+        ApiResponse::success([
+            'items' => $formatted,
+            'keyword' => $keyword,
+            'count' => count($formatted)
+        ]);
+    }
 }
 ?>

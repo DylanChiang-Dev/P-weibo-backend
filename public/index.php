@@ -115,6 +115,15 @@ $router->delete('/api/blog/comments/{id}', [BlogCommentController::class, 'delet
 $router->post('/api/blog/articles/{id}/like', [BlogController::class, 'like']); // Guests allowed
 $router->get('/api/blog/articles/{id}/like-status', [BlogController::class, 'getLikeStatus']);
 
+// Blog SEO & Discovery
+use App\Controllers\BlogFeedController;
+
+$router->get('/api/blog/rss.xml', [BlogFeedController::class, 'rss']);
+$router->get('/api/blog/sitemap.xml', [BlogFeedController::class, 'sitemap']);
+$router->get('/api/blog/archives', [BlogFeedController::class, 'archives']);
+$router->get('/api/blog/archives/{year}/{month}', [BlogFeedController::class, 'archiveArticles']);
+$router->get('/api/blog/search', [BlogController::class, 'search']);
+
 
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
