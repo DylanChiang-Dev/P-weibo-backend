@@ -100,49 +100,29 @@ class BlogController {
     }
 
     /**
-     * Get article by slug
+     * Get article by slug or ID
      */
     public function get(Request $req, array $params): void {
-        $slug = $params['slug'] ?? '';
+        $identifier = $params['slug'] ?? $params['id'] ?? '';
         
-        // Increment view count for non-admin
+        // Check if identifier is numeric (ID) or string (slug)
+        $isId = is_numeric($identifier);
+        
+        // Increment view count for non-admin (not for ID-based access which is mainly for editing)
         $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
-        $incrementView = !$isAdmin;
+        $incrementView = !$isAdmin && !$isId; // Don't increment for ID access (editing use case)
 
-        $article = $this->blogService->getArticle($slug, $incrementView);
+        if ($isId) {
+            $article = $this->blogService->getArticleById((int)$identifier, $incrementView);
+        } else {
+            $article = $this->blogService->getArticle($identifier, $incrementView);
+        }
         
         if (!$article) {
             throw new NotFoundException('Article not found');
         }
 
         // Check visibility
-        if ($article['status'] !== 'published' && !$isAdmin) {
-            throw new NotFoundException('Article not found');
-        }
-
-        if ($article['visibility'] === 'private' && !$isAdmin) {
-            throw new ForbiddenException('This article is private');
-        }
-
-        ApiResponse::success($article);
-    }
-
-    /**
-     * Get article by ID (for admin/editor use)
-     */
-    public function getById(Request $req, array $params): void {
-        $id = (int)($params['id'] ?? 0);
-        
-        // This endpoint is primarily for admin editing, so we don't increment view count
-        $article = $this->blogService->getArticleById($id);
-        
-        if (!$article) {
-            throw new NotFoundException('Article not found');
-        }
-
-        // Check permissions - only admin can see unpublished articles
-        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
-        
         if ($article['status'] !== 'published' && !$isAdmin) {
             throw new NotFoundException('Article not found');
         }
