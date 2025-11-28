@@ -130,6 +130,13 @@ $router->get('/api/blog/archives/{year}/{month}', [BlogFeedController::class, 'a
 $router->get('/api/blog/search', [BlogController::class, 'search']);
 
 
+// Media
+use App\Controllers\MediaController;
+
+$router->get('/api/media', [MediaController::class, 'list'], ['auth' => true]);
+$router->post('/api/media', [MediaController::class, 'upload'], ['auth' => true]);
+$router->delete('/api/media/{id}', [MediaController::class, 'delete'], ['auth' => true]);
+
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
