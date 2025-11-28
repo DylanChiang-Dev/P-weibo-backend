@@ -53,39 +53,94 @@ class MediaController {
             $files = [$files];
         }
 
-        $uploadedMedia = [];
-        $mediaService = new \App\Services\MediaService();
         $config = config();
         $uploadPath = $config['upload']['path'];
+        $appUrl = rtrim($config['app_url'], '/');
+        
+        // Ensure upload directory exists
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0775, true);
+        }
+
+        $uploadedMedia = [];
+        $allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/svg+xml'
+        ];
 
         foreach ($files as $file) {
             if ($file['error'] !== UPLOAD_ERR_OK) {
+                \App\Core\Logger::warning('file_upload_error', [
+                    'error_code' => $file['error'],
+                    'filename' => $file['name'] ?? 'unknown'
+                ]);
                 continue;
             }
 
-            // Upload file
-            $result = $mediaService->uploadImage($file);
+            // Validate MIME type
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($file['tmp_name']);
             
-            if ($result) {
-                // Create media record
-                $mediaId = Media::create([
-                    'user_id' => $userId,
-                    'url' => $result['url'],
-                    'filename' => $result['filename'],
-                    'filepath' => $result['path'],
-                    'size' => $file['size'],
-                    'mime_type' => $file['type']
+            if (!in_array($mimeType, $allowedMimeTypes)) {
+                \App\Core\Logger::warning('invalid_mime_type', [
+                    'mime' => $mimeType,
+                    'filename' => $file['name']
                 ]);
-
-                $uploadedMedia[] = [
-                    'id' => $mediaId,
-                    'url' => $result['url'],
-                    'filename' => $result['filename'],
-                    'size' => $file['size'],
-                    'mime_type' => $file['type'],
-                    'created_at' => date('Y-m-d H:i:s')
-                ];
+                continue;
             }
+
+            // Generate unique filename
+            $extension = match($mimeType) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/webp' => 'webp',
+                'image/svg+xml' => 'svg',
+                default => 'jpg'
+            };
+            
+            $uniqueName = bin2hex(random_bytes(16)) . '.' . $extension;
+            $filepath = $uploadPath . '/' . $uniqueName;
+            $url = $appUrl . '/uploads/' . $uniqueName;
+
+            // Move uploaded file
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                \App\Core\Logger::error('move_uploaded_file_failed', [
+                    'tmp_name' => $file['tmp_name'],
+                    'destination' => $filepath
+                ]);
+                continue;
+            }
+
+            @chmod($filepath, 0644);
+
+            // Create media record
+            $mediaId = Media::create([
+                'user_id' => $userId,
+                'url' => $url,
+                'filename' => $file['name'],
+                'filepath' => $filepath,
+                'size' => $file['size'],
+                'mime_type' => $mimeType
+            ]);
+
+            $uploadedMedia[] = [
+                'id' => $mediaId,
+                'url' => $url,
+                'filename' => $file['name'],
+                'size' => $file['size'],
+                'mime_type' => $mimeType,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            \App\Core\Logger::info('media_uploaded', [
+                'id' => $mediaId,
+                'filename' => $file['name'],
+                'size' => $file['size']
+            ]);
         }
 
         ApiResponse::success([
