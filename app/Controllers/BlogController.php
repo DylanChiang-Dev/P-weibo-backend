@@ -66,27 +66,35 @@ class BlogController {
      * Get article list
      */
     public function list(Request $req): void {
-        $limit = min((int)($req->query['limit'] ?? 20), 50);
-        $cursor = $req->query['cursor'] ?? null;
+        // Parse pagination parameters
+        $page = max(1, (int)($req->query['page'] ?? 1));
+        $limit = min((int)($req->query['limit'] ?? 20), 200); // 增加上限到200
+        $offset = ($page - 1) * $limit;
+        
+        // Parse ordering
+        $orderBy = $req->query['order_by'] ?? 'published_at'; // 默认按发布时间
+        $orderDir = strtoupper($req->query['order'] ?? 'DESC'); // 默认倒序
         
         // Only show published articles to non-admin
         $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
         $status = $isAdmin && isset($req->query['status']) ? $req->query['status'] : 'published';
 
-        $articles = $this->blogService->getArticles($limit, $cursor, $status);
-
-        // Generate next cursor
-        $nextCursor = null;
-        if (count($articles) === $limit) {
-            $last = end($articles);
-            $nextCursor = base64_encode($last['created_at'] . '|' . $last['id']);
-        }
+        // Get articles and total count
+        $result = $this->blogService->getArticlesPaginated($limit, $offset, $status, $orderBy, $orderDir);
+        
+        $articles = $result['items'];
+        $total = $result['total'];
+        $totalPages = (int)ceil($total / $limit);
 
         ApiResponse::success([
             'items' => $articles,
-            'meta' => [
-                'has_more' => $nextCursor !== null,
-                'cursor' => $nextCursor
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'total_pages' => $totalPages,
+                'has_next' => $page < $totalPages,
+                'has_prev' => $page > 1
             ]
         ]);
     }

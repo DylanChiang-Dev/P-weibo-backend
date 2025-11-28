@@ -84,6 +84,42 @@ class BlogArticle {
     }
 
     /**
+     * Count articles by status
+     */
+    public static function count(string $status = 'published'): int {
+        return QueryBuilder::table('blog_articles')
+            ->where('status', '=', $status)
+            ->count();
+    }
+
+    /**
+     * List articles with page-based pagination
+     */
+    public static function listPaginated(
+        int $limit = 20, 
+        int $offset = 0, 
+        string $status = 'published',
+        string $orderBy = 'published_at',
+        string $orderDir = 'DESC'
+    ): array {
+        $allowedOrderBy = ['published_at', 'created_at', 'view_count', 'id', 'title'];
+        if (!in_array($orderBy, $allowedOrderBy)) {
+            $orderBy = 'published_at';
+        }
+        
+        $orderDir = strtoupper($orderDir) === 'ASC' ? 'ASC' : 'DESC';
+        
+        return QueryBuilder::table('blog_articles')
+            ->select(['blog_articles.*', 'users.email', 'users.display_name', 'users.avatar_path'])
+            ->leftJoin('users', 'blog_articles.user_id', '=', 'users.id')
+            ->where('blog_articles.status', '=', $status)
+            ->orderBy('blog_articles.' . $orderBy, $orderDir)
+            ->offset($offset)
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
      * Increment view count
      */
     public static function incrementViewCount(int $id): void {

@@ -207,7 +207,7 @@ class BlogService {
     }
 
     /**
-     * Get article list with pagination
+     * Get article list with pagination (legacy cursor-based)
      */
     public function getArticles(int $limit = 20, ?string $cursor = null, string $status = 'published'): array {
         $articles = BlogArticle::list($limit, $cursor, $status);
@@ -221,6 +221,36 @@ class BlogService {
         }
 
         return $formatted;
+    }
+
+    /**
+     * Get article list with page-based pagination
+     */
+    public function getArticlesPaginated(
+        int $limit = 20, 
+        int $offset = 0, 
+        string $status = 'published',
+        string $orderBy = 'published_at',
+        string $orderDir = 'DESC'
+    ): array {
+        // Get total count
+        $total = BlogArticle::count($status);
+        
+        // Get articles with pagination
+        $articles = BlogArticle::listPaginated($limit, $offset, $status, $orderBy, $orderDir);
+        
+        $formatted = [];
+        foreach ($articles as $article) {
+            $articleId = (int)$article['id'];
+            $article['categories'] = BlogArticle::getCategories($articleId);
+            $article['tags'] = BlogArticle::getTags($articleId);
+            $formatted[] = $this->formatArticle($article, true);
+        }
+
+        return [
+            'items' => $formatted,
+            'total' => $total
+        ];
     }
 
     /**
