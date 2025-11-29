@@ -53,7 +53,7 @@ function config(): array {
             'refresh_ttl' => (int)$get('JWT_REFRESH_TTL', 1209600),
         ],
         'upload' => [
-            'path' => $get('UPLOAD_PATH', dirname(__DIR__) . '/storage/uploads'),
+            'path' => $get('UPLOAD_PATH', dirname(__DIR__) . '/public/uploads'),
             'max_mb' => (int)$get('MAX_UPLOAD_MB', 10), // Legacy, for backward compatibility
             'max_image_mb' => (int)$get('MAX_IMAGE_MB', 10),
             'max_video_mb' => (int)$get('MAX_VIDEO_MB', 100),

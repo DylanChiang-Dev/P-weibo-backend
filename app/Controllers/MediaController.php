@@ -187,7 +187,20 @@ class MediaController {
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            throw $e;
+            
+            // 在开发环境下返回详细错误信息
+            $config = config();
+            if ($config['app_env'] === 'development') {
+                ApiResponse::error([
+                    'message' => 'Media upload failed: ' . $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'type' => get_class($e)
+                ], 500);
+            } else {
+                // 生产环境只返回通用错误
+                throw $e;
+            }
         }
     }
 

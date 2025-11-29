@@ -12,8 +12,8 @@ echo "<hr>";
 
 // 1. 检查uploads目录
 echo "<h3>1. Uploads目录检查</h3>";
-$uploadDir = __DIR__ . '/../storage/uploads';
-$altUploadDir = __DIR__ . '/uploads';
+$uploadDir = __DIR__ . '/uploads';
+$altUploadDir = __DIR__ . '/../storage/uploads';
 
 if (file_exists($uploadDir)) {
     $dir = $uploadDir;
