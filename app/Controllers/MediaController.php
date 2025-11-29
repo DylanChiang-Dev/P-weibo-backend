@@ -41,111 +41,154 @@ class MediaController {
      * Upload media files
      */
     public function upload(Request $req): void {
-        $userId = (int)$req->user['id'];
-        
-        if (empty($req->files['files'])) {
-            throw new \App\Exceptions\ValidationException('No files provided');
-        }
-
-        $files = $req->files['files'];
-        // Handle single file or multiple files
-        if (!isset($files[0])) {
-            $files = [$files];
-        }
-
-        $config = config();
-        $uploadPath = $config['upload']['path'];
-        $appUrl = rtrim($config['app_url'], '/');
-        
-        // Ensure upload directory exists
-        if (!is_dir($uploadPath)) {
-            mkdir($uploadPath, 0775, true);
-        }
-
-        $uploadedMedia = [];
-        $allowedMimeTypes = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'image/svg+xml'
-        ];
-
-        foreach ($files as $file) {
-            if ($file['error'] !== UPLOAD_ERR_OK) {
-                \App\Core\Logger::warning('file_upload_error', [
-                    'error_code' => $file['error'],
-                    'filename' => $file['name'] ?? 'unknown'
-                ]);
-                continue;
-            }
-
-            // Validate MIME type
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->file($file['tmp_name']);
-            
-            if (!in_array($mimeType, $allowedMimeTypes)) {
-                \App\Core\Logger::warning('invalid_mime_type', [
-                    'mime' => $mimeType,
-                    'filename' => $file['name']
-                ]);
-                continue;
-            }
-
-            // Generate unique filename
-            $extension = match($mimeType) {
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'image/gif' => 'gif',
-                'image/webp' => 'webp',
-                'image/svg+xml' => 'svg',
-                default => 'jpg'
-            };
-            
-            $uniqueName = bin2hex(random_bytes(16)) . '.' . $extension;
-            $filepath = $uploadPath . '/' . $uniqueName;
-            $url = $appUrl . '/uploads/' . $uniqueName;
-
-            // Move uploaded file
-            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-                \App\Core\Logger::error('move_uploaded_file_failed', [
-                    'tmp_name' => $file['tmp_name'],
-                    'destination' => $filepath
-                ]);
-                continue;
-            }
-
-            @chmod($filepath, 0644);
-
-            // Create media record
-            $mediaId = Media::create([
-                'user_id' => $userId,
-                'url' => $url,
-                'filename' => $file['name'],
-                'filepath' => $filepath,
-                'size' => $file['size'],
-                'mime_type' => $mimeType
+        try {
+            \App\Core\Logger::info('media_upload_start', [
+                'user_id' => $req->user['id'] ?? 'unknown',
+                'files_count' => count($req->files['files'] ?? [])
             ]);
+            
+            $userId = (int)$req->user['id'];
+            
+            if (empty($req->files['files'])) {
+                \App\Core\Logger::warning('no_files_provided');
+                throw new \App\Exceptions\ValidationException('No files provided');
+            }
 
-            $uploadedMedia[] = [
-                'id' => $mediaId,
-                'url' => $url,
-                'filename' => $file['name'],
-                'size' => $file['size'],
-                'mime_type' => $mimeType,
-                'created_at' => date('Y-m-d H:i:s')
+            $files = $req->files['files'];
+            // Handle single file or multiple files
+            if (!isset($files[0])) {
+                $files = [$files];
+            }
+
+            $config = config();
+            $uploadPath = $config['upload']['path'];
+            $appUrl = rtrim($config['app_url'], '/');
+            
+            \App\Core\Logger::info('upload_config', [
+                'upload_path' => $uploadPath,
+                'app_url' => $appUrl,
+                'path_exists' => is_dir($uploadPath),
+                'path_writable' => is_writable($uploadPath)
+            ]);
+            
+            // Ensure upload directory exists
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0775, true);
+            }
+
+            $uploadedMedia = [];
+            $allowedMimeTypes = [
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'image/svg+xml'
             ];
 
-            \App\Core\Logger::info('media_uploaded', [
-                'id' => $mediaId,
-                'filename' => $file['name'],
-                'size' => $file['size']
-            ]);
-        }
+            foreach ($files as $index => $file) {
+                try {
+                    \App\Core\Logger::info('processing_file', [
+                        'index' => $index,
+                        'name' => $file['name'] ?? 'unknown',
+                        'size' => $file['size'] ?? 0,
+                        'error' => $file['error'] ?? -1
+                    ]);
+                    
+                    if ($file['error'] !== UPLOAD_ERR_OK) {
+                        \App\Core\Logger::warning('file_upload_error', [
+                            'error_code' => $file['error'],
+                            'filename' => $file['name'] ?? 'unknown'
+                        ]);
+                        continue;
+                    }
 
-        ApiResponse::success([
-            'items' => $uploadedMedia
-        ], 201);
+                    // Validate MIME type
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $mimeType = $finfo->file($file['tmp_name']);
+                    
+                    if (!in_array($mimeType, $allowedMimeTypes)) {
+                        \App\Core\Logger::warning('invalid_mime_type', [
+                            'mime' => $mimeType,
+                            'filename' => $file['name']
+                        ]);
+                        continue;
+                    }
+
+                    // Generate unique filename
+                    $extension = match($mimeType) {
+                        'image/jpeg' => 'jpg',
+                        'image/png' => 'png',
+                        'image/gif' => 'gif',
+                        'image/webp' => 'webp',
+                        'image/svg+xml' => 'svg',
+                        default => 'jpg'
+                    };
+                    
+                    $uniqueName = bin2hex(random_bytes(16)) . '.' . $extension;
+                    $filepath = $uploadPath . '/' . $uniqueName;
+                    $url = $appUrl . '/uploads/' . $uniqueName;
+
+                    // Move uploaded file
+                    if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                        \App\Core\Logger::error('move_uploaded_file_failed', [
+                            'tmp_name' => $file['tmp_name'],
+                            'destination' => $filepath
+                        ]);
+                        continue;
+                    }
+
+                    @chmod($filepath, 0644);
+
+                    // Create media record
+                    $mediaId = Media::create([
+                        'user_id' => $userId,
+                        'url' => $url,
+                        'filename' => $file['name'],
+                        'filepath' => $filepath,
+                        'size' => $file['size'],
+                        'mime_type' => $mimeType
+                    ]);
+
+                    $uploadedMedia[] = [
+                        'id' => $mediaId,
+                        'url' => $url,
+                        'filename' => $file['name'],
+                        'size' => $file['size'],
+                        'mime_type' => $mimeType,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+
+                    \App\Core\Logger::info('media_uploaded', [
+                        'id' => $mediaId,
+                        'filename' => $file['name'],
+                        'size' => $file['size']
+                    ]);
+                } catch (\Throwable $e) {
+                    \App\Core\Logger::error('file_processing_error', [
+                        'filename' => $file['name'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Continue processing other files
+                }
+            }
+
+            \App\Core\Logger::info('media_upload_complete', [
+                'uploaded_count' => count($uploadedMedia)
+            ]);
+
+            ApiResponse::success([
+                'items' => $uploadedMedia
+            ], 201);
+        } catch (\Throwable $e) {
+            \App\Core\Logger::error('media_upload_fatal_error', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /**
