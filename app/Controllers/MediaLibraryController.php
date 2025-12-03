@@ -10,6 +10,9 @@ use App\Models\UserMovie;
 use App\Models\UserTvShow;
 use App\Models\UserBook;
 use App\Models\UserGame;
+use App\Models\UserPodcast;
+use App\Models\UserDocumentary;
+use App\Models\UserAnime;
 
 class MediaLibraryController {
     /**
@@ -367,6 +370,237 @@ class MediaLibraryController {
         $id = (int)($params['id'] ?? 0);
         if (!UserGame::getById($id)) throw new NotFoundException('Game not found');
         UserGame::delete($id);
+        ApiResponse::success();
+    }
+    
+    // ============================================
+    // Podcasts
+    // ============================================
+    public function listPodcasts(Request $req): void {
+        $userId = (int)$req->user['id'];
+        $status = $req->query['status'] ?? null;
+        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $page = max(1, (int)($req->query['page'] ?? 1));
+        $offset = ($page - 1) * $limit;
+        
+        $items = UserPodcast::list($userId, $status, $limit, $offset);
+        $total = UserPodcast::count($userId, $status);
+        
+        ApiResponse::success([
+            'items' => $items,
+            'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total]
+        ]);
+    }
+    
+    public function addPodcast(Request $req): void {
+        $data = is_array($req->body) ? $req->body : [];
+        $userId = (int)$req->user['id'];
+        
+        // Check if already exists
+        if (isset($data['podcast_id']) && UserPodcast::exists($userId, $data['podcast_id'])) {
+            throw new ValidationException('Podcast already in library');
+        }
+        
+        $podcastData = [
+            'user_id' => $userId,
+            'podcast_id' => $data['podcast_id'] ?? null,
+            'title' => $data['title'] ?? null,
+            'host' => $data['host'] ?? null,
+            'rss_feed' => $data['rss_feed'] ?? null,
+            'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
+            'my_review' => $data['my_review'] ?? null,
+            'episodes_listened' => isset($data['episodes_listened']) ? (int)$data['episodes_listened'] : 0,
+            'total_episodes' => isset($data['total_episodes']) ? (int)$data['total_episodes'] : null,
+            'status' => $data['status'] ?? 'listening',
+            'first_release_date' => $data['first_release_date'] ?? null,
+            'completed_date' => $data['completed_date'] ?? null
+        ];
+        
+        $id = UserPodcast::create($podcastData);
+        ApiResponse::success(['id' => $id], 201);
+    }
+    
+    public function getPodcast(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        $podcast = UserPodcast::getById($id);
+        if (!$podcast) throw new NotFoundException('Podcast not found');
+        ApiResponse::success($podcast);
+    }
+    
+    public function updatePodcast(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserPodcast::getById($id)) throw new NotFoundException('Podcast not found');
+        
+        $data = is_array($req->body) ? $req->body : [];
+        $updateData = [];
+        foreach (['my_rating', 'my_review', 'episodes_listened', 'status', 'completed_date'] as $field) {
+            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        }
+        
+        if (!empty($updateData)) UserPodcast::update($id, $updateData);
+        ApiResponse::success(['message' => 'Podcast updated']);
+    }
+    
+    public function deletePodcast(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserPodcast::getById($id)) throw new NotFoundException('Podcast not found');
+        UserPodcast::delete($id);
+        ApiResponse::success();
+    }
+    
+    // ============================================
+    // Documentaries
+    // ============================================
+    public function listDocumentaries(Request $req): void {
+        $userId = (int)$req->user['id'];
+        $status = $req->query['status'] ?? null;
+        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $page = max(1, (int)($req->query['page'] ?? 1));
+        $offset = ($page - 1) * $limit;
+        
+        $items = UserDocumentary::list($userId, $status, $limit, $offset);
+        $total = UserDocumentary::count($userId, $status);
+        
+        ApiResponse::success([
+            'items' => $items,
+            'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total]
+        ]);
+    }
+    
+    public function addDocumentary(Request $req): void {
+        $data = is_array($req->body) ? $req->body : [];
+        $errs = Validator::required($data, ['tmdb_id']);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        
+        $userId = (int)$req->user['id'];
+        if (UserDocumentary::exists($userId, (int)$data['tmdb_id'])) {
+            throw new ValidationException('Documentary already in library');
+        }
+        
+        $docData = [
+            'user_id' => $userId,
+            'tmdb_id' => (int)$data['tmdb_id'],
+            'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
+            'my_review' => $data['my_review'] ?? null,
+            'status' => $data['status'] ?? 'watched',
+            'release_date' => $data['release_date'] ?? null,
+            'completed_date' => $data['completed_date'] ?? null
+        ];
+        
+        $id = UserDocumentary::create($docData);
+        ApiResponse::success(['id' => $id], 201);
+    }
+    
+    public function getDocumentary(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        $doc = UserDocumentary::getById($id);
+        if (!$doc) throw new NotFoundException('Documentary not found');
+        ApiResponse::success($doc);
+    }
+    
+    public function updateDocumentary(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserDocumentary::getById($id)) throw new NotFoundException('Documentary not found');
+        
+        $data = is_array($req->body) ? $req->body : [];
+        $updateData = [];
+        foreach (['my_rating', 'my_review', 'status', 'completed_date'] as $field) {
+            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        }
+        
+        if (!empty($updateData)) UserDocumentary::update($id, $updateData);
+        ApiResponse::success(['message' => 'Documentary updated']);
+    }
+    
+    public function deleteDocumentary(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserDocumentary::getById($id)) throw new NotFoundException('Documentary not found');
+        UserDocumentary::delete($id);
+        ApiResponse::success();
+    }
+    
+    // ============================================
+    // Anime
+    // ============================================
+    public function listAnime(Request $req): void {
+        $userId = (int)$req->user['id'];
+        $status = $req->query['status'] ?? null;
+        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $page = max(1, (int)($req->query['page'] ?? 1));
+        $offset = ($page - 1) * $limit;
+        
+        $items = UserAnime::list($userId, $status, $limit, $offset);
+        $total = UserAnime::count($userId, $status);
+        
+        ApiResponse::success([
+            'items' => $items,
+            'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total]
+        ]);
+    }
+    
+    public function addAnime(Request $req): void {
+        $data = is_array($req->body) ? $req->body : [];
+        $errs = Validator::required($data, ['anime_id']);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        
+        $userId = (int)$req->user['id'];
+        if (UserAnime::exists($userId, (int)$data['anime_id'])) {
+            throw new ValidationException('Anime already in library');
+        }
+        
+        $animeData = [
+            'user_id' => $userId,
+            'anime_id' => (int)$data['anime_id'],
+            'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
+            'my_review' => $data['my_review'] ?? null,
+            'episodes_watched' => isset($data['episodes_watched']) ? (int)$data['episodes_watched'] : 0,
+            'total_episodes' => isset($data['total_episodes']) ? (int)$data['total_episodes'] : null,
+            'status' => $data['status'] ?? 'watching',
+            'first_air_date' => $data['first_air_date'] ?? null,
+            'completed_date' => $data['completed_date'] ?? null
+        ];
+        
+        $id = UserAnime::create($animeData);
+        ApiResponse::success(['id' => $id], 201);
+    }
+    
+    public function getAnime(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        $anime = UserAnime::getById($id);
+        if (!$anime) throw new NotFoundException('Anime not found');
+        ApiResponse::success($anime);
+    }
+    
+    public function updateAnime(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserAnime::getById($id)) throw new NotFoundException('Anime not found');
+        
+        $data = is_array($req->body) ? $req->body : [];
+        $updateData = [];
+        foreach (['my_rating', 'my_review', 'episodes_watched', 'status', 'completed_date'] as $field) {
+            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        }
+        
+        if (!empty($updateData)) UserAnime::update($id, $updateData);
+        ApiResponse::success(['message' => 'Anime updated']);
+    }
+    
+    public function updateAnimeProgress(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserAnime::getById($id)) throw new NotFoundException('Anime not found');
+        
+        $data = is_array($req->body) ? $req->body : [];
+        $errs = Validator::required($data, ['episodes_watched']);
+        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        
+        UserAnime::updateProgress($id, (int)$data['episodes_watched']);
+        ApiResponse::success(['message' => 'Progress updated']);
+    }
+    
+    public function deleteAnime(Request $req, array $params): void {
+        $id = (int)($params['id'] ?? 0);
+        if (!UserAnime::getById($id)) throw new NotFoundException('Anime not found');
+        UserAnime::delete($id);
         ApiResponse::success();
     }
 }
