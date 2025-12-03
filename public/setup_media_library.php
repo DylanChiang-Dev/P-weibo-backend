@@ -190,6 +190,35 @@ try {
     }
     
     // ============================================
+    // 步骤 6: 执行迁移 014 (用户设置)
+    // ============================================
+    output('步骤 6: 执行迁移 014 (用户设置)', 'title');
+    
+    $migrationFile014 = $root . '/migrations/014_create_user_settings_table.sql';
+    if (!file_exists($migrationFile014)) {
+        $error = "找不到迁移文件: $migrationFile014";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查表是否存在
+        $stmt = $pdo->query("SHOW TABLES LIKE 'user_settings'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  user_settings 表已存在，跳过创建", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile014);
+            try {
+                $pdo->exec($sql);
+                output("✅ 成功创建 user_settings 表", 'success');
+                $success[] = "创建了 user_settings 表";
+            } catch (\PDOException $e) {
+                $error = "创建 user_settings 表失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

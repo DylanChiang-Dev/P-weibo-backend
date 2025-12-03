@@ -203,6 +203,12 @@ $router->delete('/api/library/anime/{id}', [MediaLibraryController::class, 'dele
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
 
+// User Settings (API Keys)
+use App\Controllers\UserSettingsController;
+
+$router->get('/api/user/settings', [UserSettingsController::class, 'getSettings'], ['auth' => true]);
+$router->post('/api/user/settings', [UserSettingsController::class, 'saveSettings'], ['auth' => true]);
+
 // 執行
 try {
     $router->dispatch();
