@@ -97,8 +97,8 @@ class MediaController {
             
             $userId = (int)$req->user['id'];
             
-            if (empty($req->files['files'])) {
-                \App\Core\Logger::warning('no_files_provided');
+                if (empty($req->files['files'])) {
+                \App\Core\Logger::warn('no_files_provided');
                 throw new \App\Exceptions\ValidationException('No files provided');
             }
 
@@ -151,7 +151,7 @@ class MediaController {
                     
                     if ($file['error'] !== UPLOAD_ERR_OK) {
                         $errorMsg = $this->getUploadErrorMessage($file['error']);
-                        \App\Core\Logger::warning('file_upload_error', [
+                        \App\Core\Logger::warn('file_upload_error', [
                             'error_code' => $file['error'],
                             'error_message' => $errorMsg,
                             'filename' => $file['name'] ?? 'unknown'
@@ -169,7 +169,7 @@ class MediaController {
                     
                     if (!in_array($mimeType, $allowedMimeTypes)) {
                         $errorMsg = "Invalid file type: $mimeType. Allowed types: " . implode(', ', $allowedMimeTypes);
-                        \App\Core\Logger::warning('invalid_mime_type', [
+                        \App\Core\Logger::warn('invalid_mime_type', [
                             'mime' => $mimeType,
                             'filename' => $file['name']
                         ]);
