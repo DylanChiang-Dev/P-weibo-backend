@@ -62,7 +62,7 @@ class MediaLibraryController {
         ];
         
         $id = UserMovie::create($movieData);
-        Apiresponse::success(['id' => $id], 201);
+        ApiResponse::success(['id' => $id], 201);
     }
     
     /**
