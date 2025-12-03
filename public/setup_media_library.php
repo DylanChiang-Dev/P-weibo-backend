@@ -161,6 +161,35 @@ try {
     }
     
     // ============================================
+    // 步骤 5: 执行迁移 013 (扩展媒体库：播客/纪录片/动画)
+    // ============================================
+    output('步骤 5: 执行迁移 013 (扩展媒体库)', 'title');
+    
+    $migrationFile013 = $root . '/migrations/013_create_extended_media_tables.sql';
+    if (!file_exists($migrationFile013)) {
+        $error = "找不到迁移文件: $migrationFile013";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查表是否存在 (检查其中一个表即可)
+        $stmt = $pdo->query("SHOW TABLES LIKE 'user_podcasts'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  扩展媒体库表 (user_podcasts 等) 已存在，跳过创建", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile013);
+            try {
+                $pdo->exec($sql);
+                output("✅ 成功创建扩展媒体库表 (user_podcasts, user_documentaries, user_anime)", 'success');
+                $success[] = "创建了扩展媒体库相关表";
+            } catch (\PDOException $e) {
+                $error = "执行扩展媒体库迁移失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
