@@ -135,6 +135,40 @@ class BlogController {
     }
 
     /**
+     * Increment view count
+     */
+    public function incrementView(Request $req, array $params): void {
+        $articleId = (int)($params['id'] ?? 0);
+        
+        // 1. Get article without incrementing
+        $article = $this->blogService->getArticleById($articleId, false);
+        
+        if (!$article) {
+            throw new NotFoundException('Article not found');
+        }
+
+        // 2. Check visibility
+        $isAdmin = isset($req->user) && isset($req->user['role']) && $req->user['role'] === 'admin';
+        
+        if ($article['status'] !== 'published' && !$isAdmin) {
+            throw new NotFoundException('Article not found');
+        }
+
+        if ($article['visibility'] === 'private' && !$isAdmin) {
+            throw new ForbiddenException('This article is private');
+        }
+
+        // 3. Increment
+        BlogArticle::incrementViewCount($articleId);
+        
+        // 4. Return new count
+        ApiResponse::success([
+            'id' => $articleId,
+            'view_count' => (int)$article['view_count'] + 1
+        ]);
+    }
+
+    /**
      * Update article (Admin only)
      */
     public function update(Request $req, array $params): void {

@@ -297,5 +297,20 @@ class BlogService {
         }
         return $tagIds;
     }
+
+    /**
+     * Increment view count for an article
+     */
+    public function incrementViewCount(int $id): ?array {
+        $article = BlogArticle::getById($id);
+        if (!$article) return null;
+
+        BlogArticle::incrementViewCount($id);
+        
+        return [
+            'id' => $id,
+            'view_count' => (int)$article['view_count'] + 1
+        ];
+    }
 }
 ?>
