@@ -35,8 +35,14 @@ class UserSettingsController {
         
         $apiKeys = $data['api_keys'];
         
-        // Optional: Validate API key formats
-        $allowedKeys = ['tmdb_api_key', 'rawg_api_key', 'google_books_api_key'];
+        // Allow all API key fields (TMDB, RAWG, IGDB, Google Books)
+        $allowedKeys = [
+            'tmdb_api_key',
+            'rawg_api_key',
+            'igdb_client_id',
+            'igdb_access_token',
+            'google_books_api_key'
+        ];
         $filteredKeys = [];
         
         foreach ($allowedKeys as $key) {

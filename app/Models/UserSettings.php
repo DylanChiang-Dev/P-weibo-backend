@@ -41,6 +41,8 @@ class UserSettings {
             return [
                 'tmdb_api_key' => '',
                 'rawg_api_key' => '',
+                'igdb_client_id' => '',
+                'igdb_access_token' => '',
                 'google_books_api_key' => ''
             ];
         }
@@ -51,6 +53,8 @@ class UserSettings {
         return [
             'tmdb_api_key' => $apiKeys['tmdb_api_key'] ?? '',
             'rawg_api_key' => $apiKeys['rawg_api_key'] ?? '',
+            'igdb_client_id' => $apiKeys['igdb_client_id'] ?? '',
+            'igdb_access_token' => $apiKeys['igdb_access_token'] ?? '',
             'google_books_api_key' => $apiKeys['google_books_api_key'] ?? ''
         ];
     }
