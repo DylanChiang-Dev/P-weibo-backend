@@ -9,6 +9,54 @@ use App\Models\Media;
 
 class MediaController {
     /**
+     * Normalize $_FILES array structure
+     * Converts both single and multiple file uploads to a consistent format
+     */
+    private function normalizeFiles(array $filesData): array {
+        // Check if this is array-style upload (files[])
+        if (isset($filesData['name']) && is_array($filesData['name'])) {
+            // Multiple files with array structure
+            $normalized = [];
+            $count = count($filesData['name']);
+            
+            for ($i = 0; $i < $count; $i++) {
+                $normalized[] = [
+                    'name' => $filesData['name'][$i] ?? '',
+                    'type' => $filesData['type'][$i] ?? '',
+                    'tmp_name' => $filesData['tmp_name'][$i] ?? '',
+                    'error' => $filesData['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+                    'size' => $filesData['size'][$i] ?? 0
+                ];
+            }
+            
+            return $normalized;
+        }
+        
+        // Single file upload
+        if (isset($filesData['name']) && is_string($filesData['name'])) {
+            return [$filesData];
+        }
+        
+        // Already normalized or empty
+        return $filesData;
+    }
+
+    /**
+     * Get human-readable upload error message
+     */
+    private function getUploadErrorMessage(int $errorCode): string {
+        return match ($errorCode) {
+            UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',
+            UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+            UPLOAD_ERR_EXTENSION => 'Upload stopped by extension',
+            default => 'Unknown upload error'
+        };
+    }
+    /**
      * Get user's media list with pagination
      */
     public function list(Request $req): void {
@@ -54,11 +102,17 @@ class MediaController {
                 throw new \App\Exceptions\ValidationException('No files provided');
             }
 
-            $files = $req->files['files'];
-            // Handle single file or multiple files
-            if (!isset($files[0])) {
-                $files = [$files];
-            }
+            // Normalize files array structure
+            $files = $this->normalizeFiles($req->files['files']);
+            
+            \App\Core\Logger::info('files_normalized', [
+                'count' => count($files),
+                'structure' => array_map(fn($f) => [
+                    'name' => $f['name'] ?? 'unknown',
+                    'size' => $f['size'] ?? 0,
+                    'error' => $f['error'] ?? -1
+                ], $files)
+            ]);
 
             $config = config();
             $uploadPath = $config['upload']['path'];
@@ -77,6 +131,7 @@ class MediaController {
             }
 
             $uploadedMedia = [];
+            $errors = [];
             $allowedMimeTypes = [
                 'image/jpeg',
                 'image/png',
@@ -95,10 +150,16 @@ class MediaController {
                     ]);
                     
                     if ($file['error'] !== UPLOAD_ERR_OK) {
+                        $errorMsg = $this->getUploadErrorMessage($file['error']);
                         \App\Core\Logger::warning('file_upload_error', [
                             'error_code' => $file['error'],
+                            'error_message' => $errorMsg,
                             'filename' => $file['name'] ?? 'unknown'
                         ]);
+                        $errors[] = [
+                            'filename' => $file['name'] ?? "file_$index",
+                            'error' => $errorMsg
+                        ];
                         continue;
                     }
 
@@ -107,10 +168,15 @@ class MediaController {
                     $mimeType = $finfo->file($file['tmp_name']);
                     
                     if (!in_array($mimeType, $allowedMimeTypes)) {
+                        $errorMsg = "Invalid file type: $mimeType. Allowed types: " . implode(', ', $allowedMimeTypes);
                         \App\Core\Logger::warning('invalid_mime_type', [
                             'mime' => $mimeType,
                             'filename' => $file['name']
                         ]);
+                        $errors[] = [
+                            'filename' => $file['name'] ?? "file_$index",
+                            'error' => $errorMsg
+                        ];
                         continue;
                     }
 
@@ -130,10 +196,15 @@ class MediaController {
 
                     // Move uploaded file
                     if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                        $errorMsg = 'Failed to save file to server';
                         \App\Core\Logger::error('move_uploaded_file_failed', [
                             'tmp_name' => $file['tmp_name'],
                             'destination' => $filepath
                         ]);
+                        $errors[] = [
+                            'filename' => $file['name'] ?? "file_$index",
+                            'error' => $errorMsg
+                        ];
                         continue;
                     }
 
@@ -169,17 +240,37 @@ class MediaController {
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
                     ]);
-                    // Continue processing other files
+                    $errors[] = [
+                        'filename' => $file['name'] ?? "file_$index",
+                        'error' => $e->getMessage()
+                    ];
                 }
             }
 
             \App\Core\Logger::info('media_upload_complete', [
-                'uploaded_count' => count($uploadedMedia)
+                'uploaded_count' => count($uploadedMedia),
+                'failed_count' => count($errors)
             ]);
 
-            ApiResponse::success([
-                'items' => $uploadedMedia
-            ], 201);
+            // If no files were successfully uploaded, throw an exception
+            if (empty($uploadedMedia)) {
+                if (!empty($errors)) {
+                    throw new \App\Exceptions\ValidationException(
+                        'All file uploads failed',
+                        ['errors' => $errors]
+                    );
+                } else {
+                    throw new \App\Exceptions\ValidationException('No valid files to upload');
+                }
+            }
+
+            // Return success with uploaded files and any errors
+            $response = ['items' => $uploadedMedia];
+            if (!empty($errors)) {
+                $response['partial_errors'] = $errors;
+            }
+            
+            ApiResponse::success($response, 201);
         } catch (\Throwable $e) {
             \App\Core\Logger::error('media_upload_fatal_error', [
                 'error' => $e->getMessage(),
