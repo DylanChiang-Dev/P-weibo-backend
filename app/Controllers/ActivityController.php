@@ -10,6 +10,13 @@ use App\Models\DailyActivity;
 
 class ActivityController {
     /**
+     * Get user ID from request (defaults to 1 for public access)
+     */
+    private function getUserId(Request $req): int {
+        return isset($req->user) ? (int)$req->user['id'] : 1;
+    }
+    
+    /**
      * Check in or update daily activity
      */
     public function checkin(Request $req): void {
@@ -35,7 +42,7 @@ class ActivityController {
             throw new ValidationException('Invalid intensity', ['intensity' => 'Must be one of: low, medium, high']);
         }
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         
         $activityData = [
             'user_id' => $userId,
@@ -58,7 +65,7 @@ class ActivityController {
      * Get heatmap data for visualization
      */
     public function heatmap(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $type = $req->query['type'] ?? '';
         $year = isset($req->query['year']) ? (int)$req->query['year'] : (int)date('Y');
         
@@ -77,7 +84,7 @@ class ActivityController {
      * Get statistics
      */
     public function stats(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $type = $req->query['type'] ?? '';
         $year = isset($req->query['year']) ? (int)$req->query['year'] : (int)date('Y');
         
@@ -96,7 +103,7 @@ class ActivityController {
      * Get all activities for a specific date
      */
     public function daily(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $date = $req->query['date'] ?? date('Y-m-d');
         
         // Validate date format

@@ -16,10 +16,17 @@ use App\Models\UserAnime;
 
 class MediaLibraryController {
     /**
+     * Get user ID from request (defaults to 1 for public access)
+     */
+    private function getUserId(Request $req): int {
+        return isset($req->user) ? (int)$req->user['id'] : 1;
+    }
+    
+    /**
      * List movies
      */
     public function listMovies(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -47,7 +54,7 @@ class MediaLibraryController {
         $errs = Validator::required($data, ['tmdb_id']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         
         // Check if already exists
         if (UserMovie::exists($userId, (int)$data['tmdb_id'])) {
@@ -127,7 +134,7 @@ class MediaLibraryController {
     
     // TV Shows
     public function listTvShows(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -152,7 +159,7 @@ class MediaLibraryController {
         $errs = Validator::required($data, ['tmdb_id']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         
         if (UserTvShow::exists($userId, (int)$data['tmdb_id'])) {
             throw new ValidationException('TV show already in library');
@@ -240,7 +247,7 @@ class MediaLibraryController {
     
     // Books - Similar pattern (I'll create concise versions)
     public function listBooks(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -257,7 +264,7 @@ class MediaLibraryController {
     
     public function addBook(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         
         $bookData = [
             'user_id' => $userId,
@@ -304,7 +311,7 @@ class MediaLibraryController {
     
     // Games - Similar pattern
     public function listGames(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -324,7 +331,7 @@ class MediaLibraryController {
         $errs = Validator::required($data, ['rawg_id']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         if (UserGame::exists($userId, (int)$data['rawg_id'])) {
             throw new ValidationException('Game already in library');
         }
@@ -377,7 +384,7 @@ class MediaLibraryController {
     // Podcasts
     // ============================================
     public function listPodcasts(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -394,7 +401,7 @@ class MediaLibraryController {
     
     public function addPodcast(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         
         // Check if already exists
         if (isset($data['podcast_id']) && UserPodcast::exists($userId, $data['podcast_id'])) {
@@ -452,7 +459,7 @@ class MediaLibraryController {
     // Documentaries
     // ============================================
     public function listDocumentaries(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -472,7 +479,7 @@ class MediaLibraryController {
         $errs = Validator::required($data, ['tmdb_id']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         if (UserDocumentary::exists($userId, (int)$data['tmdb_id'])) {
             throw new ValidationException('Documentary already in library');
         }
@@ -523,7 +530,7 @@ class MediaLibraryController {
     // Anime
     // ============================================
     public function listAnime(Request $req): void {
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
@@ -543,7 +550,7 @@ class MediaLibraryController {
         $errs = Validator::required($data, ['anime_id']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
         
-        $userId = (int)$req->user['id'];
+        $userId = $this->getUserId($req);
         if (UserAnime::exists($userId, (int)$data['anime_id'])) {
             throw new ValidationException('Anime already in library');
         }
