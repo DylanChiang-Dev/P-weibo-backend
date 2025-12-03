@@ -5,7 +5,7 @@
 -- 1. User Movies Table
 CREATE TABLE IF NOT EXISTS user_movies (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   tmdb_id INT NOT NULL,
   
   -- Personal info
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS user_movies (
 -- 2. User TV Shows Table
 CREATE TABLE IF NOT EXISTS user_tv_shows (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   tmdb_id INT NOT NULL,
   
   -- Personal info
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS user_tv_shows (
 -- 3. User Books Table
 CREATE TABLE IF NOT EXISTS user_books (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   google_books_id VARCHAR(50),
   isbn VARCHAR(20),
   
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS user_books (
 -- 4. User Games Table
 CREATE TABLE IF NOT EXISTS user_games (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   rawg_id INT NOT NULL,
   
   -- Personal info

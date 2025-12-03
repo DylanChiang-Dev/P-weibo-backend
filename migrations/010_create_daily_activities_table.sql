@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS daily_activities (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   activity_type ENUM('exercise', 'reading', 'duolingo') NOT NULL,
   activity_date DATE NOT NULL,
   
