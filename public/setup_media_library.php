@@ -219,6 +219,35 @@ try {
     }
     
     // ============================================
+    // 步骤 7: 执行迁移 015 (添加IGDB支持)
+    // ============================================
+    output('步骤 7: 执行迁移 015 (添加IGDB支持)', 'title');
+    
+    $migrationFile015 = $root . '/migrations/015_add_igdb_support.sql';
+    if (!file_exists($migrationFile015)) {
+        $error = "找不到迁移文件: $migrationFile015";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查列是否已存在
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_games LIKE 'igdb_id'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  igdb_id 列已存在，跳过添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile015);
+            try {
+                $pdo->exec($sql);
+                output("✅ 成功添加 igdb_id 列到 user_games 表", 'success');
+                $success[] = "添加了 IGDB 支持";
+            } catch (\PDOException $e) {
+                $error = "添加 igdb_id 列失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

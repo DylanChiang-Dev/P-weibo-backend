@@ -339,6 +339,7 @@ class MediaLibraryController {
         $gameData = [
             'user_id' => $userId,
             'rawg_id' => (int)$data['rawg_id'],
+            'igdb_id' => isset($data['igdb_id']) ? (int)$data['igdb_id'] : null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? null,
             'playtime_hours' => isset($data['playtime_hours']) ? (int)$data['playtime_hours'] : null,
@@ -365,7 +366,9 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        foreach (['my_rating', 'my_review', 'playtime_hours', 'platform', 'status', 'completed_date'] as $field) {
+        
+        $allowedFields = ['igdb_id', 'my_rating', 'my_review', 'playtime_hours', 'platform', 'status', 'completed_date'];
+        foreach ($allowedFields as $field) {
             if (isset($data[$field])) $updateData[$field] = $data[$field];
         }
         
