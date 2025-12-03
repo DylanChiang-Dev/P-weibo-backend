@@ -145,6 +145,39 @@ $router->get('/api/activities/heatmap', [ActivityController::class, 'heatmap'], 
 $router->get('/api/activities/stats', [ActivityController::class, 'stats'], ['middleware' => [AdminMiddleware::class]]);
 $router->get('/api/activities/daily', [ActivityController::class, 'daily'], ['middleware' => [AdminMiddleware::class]]);
 
+// Media Library
+use App\Controllers\MediaLibraryController;
+
+// Movies
+$router->get('/api/library/movies', [MediaLibraryController::class, 'listMovies'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/library/movies', [MediaLibraryController::class, 'addMovie'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/library/movies/{id}', [MediaLibraryController::class, 'getMovie'], ['middleware' => [AdminMiddleware::class]]);
+$router->put('/api/library/movies/{id}', [MediaLibraryController::class, 'updateMovie'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/library/movies/{id}', [MediaLibraryController::class, 'deleteMovie'], ['middleware' => [AdminMiddleware::class]]);
+
+// TV Shows
+$router->get('/api/library/tv-shows', [MediaLibraryController::class, 'listTvShows'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/library/tv-shows', [MediaLibraryController::class, 'addTvShow'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/library/tv-shows/{id}', [MediaLibraryController::class, 'getTvShow'], ['middleware' => [AdminMiddleware::class]]);
+$router->put('/api/library/tv-shows/{id}', [MediaLibraryController::class, 'updateTvShow'], ['middleware' => [AdminMiddleware::class]]);
+$router->patch('/api/library/tv-shows/{id}/progress', [MediaLibraryController::class, 'updateTvShowProgress'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/library/tv-shows/{id}', [MediaLibraryController::class, 'deleteTvShow'], ['middleware' => [AdminMiddleware::class]]);
+
+// Books
+$router->get('/api/library/books', [MediaLibraryController::class, 'listBooks'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/library/books', [MediaLibraryController::class, 'addBook'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/library/books/{id}', [MediaLibraryController::class, 'getBook'], ['middleware' => [AdminMiddleware::class]]);
+$router->put('/api/library/books/{id}', [MediaLibraryController::class, 'updateBook'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/library/books/{id}', [MediaLibraryController::class, 'deleteBook'], ['middleware' => [AdminMiddleware::class]]);
+
+// Games
+$router->get('/api/library/games', [MediaLibraryController::class, 'listGames'], ['middleware' => [AdminMiddleware::class]]);
+$router->post('/api/library/games', [MediaLibraryController::class, 'addGame'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/library/games/{id}', [MediaLibraryController::class, 'getGame'], ['middleware' => [AdminMiddleware::class]]);
+$router->put('/api/library/games/{id}', [MediaLibraryController::class, 'updateGame'], ['middleware' => [AdminMiddleware::class]]);
+$router->delete('/api/library/games/{id}', [MediaLibraryController::class, 'deleteGame'], ['middleware' => [AdminMiddleware::class]]);
+
+
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
