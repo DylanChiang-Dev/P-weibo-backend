@@ -137,6 +137,14 @@ $router->get('/api/media', [MediaController::class, 'list'], ['auth' => true]);
 $router->post('/api/media', [MediaController::class, 'upload'], ['auth' => true]);
 $router->delete('/api/media/{id}', [MediaController::class, 'delete'], ['auth' => true]);
 
+// Activities
+use App\Controllers\ActivityController;
+
+$router->post('/api/activities/checkin', [ActivityController::class, 'checkin'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/activities/heatmap', [ActivityController::class, 'heatmap'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/activities/stats', [ActivityController::class, 'stats'], ['middleware' => [AdminMiddleware::class]]);
+$router->get('/api/activities/daily', [ActivityController::class, 'daily'], ['middleware' => [AdminMiddleware::class]]);
+
 // Users
 $router->get('/api/users/{email}', [UserController::class, 'show']); // User profile by email
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
