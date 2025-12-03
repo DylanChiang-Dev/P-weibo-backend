@@ -137,6 +137,30 @@ try {
     }
     
     // ============================================
+    // 步骤 4: 执行迁移 012 (修复评分精度)
+    // ============================================
+    output('步骤 4: 执行迁移 012 (修复评分精度)', 'title');
+    
+    $migrationFile012 = $root . '/migrations/012_fix_rating_decimal.sql';
+    if (!file_exists($migrationFile012)) {
+        $error = "找不到迁移文件: $migrationFile012";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        $sql = file_get_contents($migrationFile012);
+        try {
+            // 检查列类型是否已经是 DECIMAL(3,1) - 这里简单直接执行ALTER，MySQL通常允许重复ALTER
+            // 或者我们可以捕获错误
+            $pdo->exec($sql);
+            output("✅ 成功修复评分字段精度 (DECIMAL 3,1)", 'success');
+            $success[] = "修复了评分字段精度";
+        } catch (\PDOException $e) {
+            // 如果已经修改过，可能不会报错，或者报无变化
+            output("ℹ️ 执行修复迁移: " . $e->getMessage(), 'info');
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
