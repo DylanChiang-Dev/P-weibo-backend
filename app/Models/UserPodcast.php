@@ -60,5 +60,14 @@ class UserPodcast {
         
         return $result !== null;
     }
+    
+    public static function existsByItunesId(int $userId, int $itunesId): bool {
+        $result = QueryBuilder::table('user_podcasts')
+            ->where('user_id', '=', $userId)
+            ->where('itunes_id', '=', $itunesId)
+            ->first();
+        
+        return $result !== null;
+    }
 }
 ?>

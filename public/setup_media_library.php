@@ -313,6 +313,40 @@ try {
     }
     
     // ============================================
+    // 步骤 10: 执行迁移 018 (播客iTunes支持)
+    // ============================================
+    output('步骤 10: 执行迁移 018 (播客iTunes支持)', 'title');
+    
+    $migrationFile018 = $root . '/migrations/018_add_podcast_itunes_support.sql';
+    if (!file_exists($migrationFile018)) {
+        $error = "找不到迁移文件: $migrationFile018";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查 itunes_id 列是否已存在
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_podcasts LIKE 'itunes_id'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  itunes_id 列已存在，跳过添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile018);
+            try {
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt)) {
+                        $pdo->exec($stmt);
+                    }
+                }
+                output("✅ 成功添加 itunes_id, artwork_url, release_date 列", 'success');
+                $success[] = "添加了播客iTunes支持";
+            } catch (\PDOException $e) {
+                $error = "添加播客字段失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

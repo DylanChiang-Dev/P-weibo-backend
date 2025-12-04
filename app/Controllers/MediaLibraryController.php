@@ -436,23 +436,32 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         $userId = $this->getUserId($req);
         
-        // Check if already exists
-        if (isset($data['podcast_id']) && UserPodcast::exists($userId, $data['podcast_id'])) {
+        // Check for duplicates
+        $itunesId = isset($data['itunes_id']) ? (int)$data['itunes_id'] : null;
+        $podcastId = $data['podcast_id'] ?? null;
+        
+        if ($itunesId && UserPodcast::existsByItunesId($userId, $itunesId)) {
+            throw new ValidationException('Podcast already in library');
+        }
+        if ($podcastId && UserPodcast::exists($userId, $podcastId)) {
             throw new ValidationException('Podcast already in library');
         }
         
         $podcastData = [
             'user_id' => $userId,
-            'podcast_id' => $data['podcast_id'] ?? null,
+            'podcast_id' => $podcastId,
+            'itunes_id' => $itunesId,
             'title' => $data['title'] ?? null,
+            'artwork_url' => $data['artwork_url'] ?? null,
             'host' => $data['host'] ?? null,
             'rss_feed' => $data['rss_feed'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,  // Accept both
             'episodes_listened' => isset($data['episodes_listened']) ? (int)$data['episodes_listened'] : 0,
             'total_episodes' => isset($data['total_episodes']) ? (int)$data['total_episodes'] : null,
             'status' => $data['status'] ?? 'listening',
             'first_release_date' => $data['first_release_date'] ?? null,
+            'release_date' => $data['release_date'] ?? null,  // Frontend format
             'completed_date' => $data['completed_date'] ?? null
         ];
         
