@@ -49,9 +49,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserMovie::list($userId, $status, $limit, $offset);
-        $total = UserMovie::count($userId, $status);
+        $items = UserMovie::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserMovie::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -157,9 +159,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserTvShow::list($userId, $status, $limit, $offset);
-        $total = UserTvShow::count($userId, $status);
+        $items = UserTvShow::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserTvShow::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -270,9 +274,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserBook::list($userId, $status, $limit, $offset);
-        $total = UserBook::count($userId, $status);
+        $items = UserBook::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserBook::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -334,9 +340,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserGame::list($userId, $status, $limit, $offset);
-        $total = UserGame::count($userId, $status);
+        $items = UserGame::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserGame::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -440,9 +448,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserPodcast::list($userId, $status, $limit, $offset);
-        $total = UserPodcast::count($userId, $status);
+        $items = UserPodcast::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserPodcast::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -524,9 +534,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserDocumentary::list($userId, $status, $limit, $offset);
-        $total = UserDocumentary::count($userId, $status);
+        $items = UserDocumentary::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserDocumentary::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
@@ -595,9 +607,11 @@ class MediaLibraryController {
         $limit = min((int)($req->query['limit'] ?? 20), 100);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
+        $search = $req->query['search'] ?? null;
+        $sort = $req->query['sort'] ?? 'date_desc';
         
-        $items = UserAnime::list($userId, $status, $limit, $offset);
-        $total = UserAnime::count($userId, $status);
+        $items = UserAnime::list($userId, $status, $limit, $offset, $search, $sort);
+        $total = UserAnime::count($userId, $status, $search);
         
         ApiResponse::success([
             'items' => $items,
