@@ -66,5 +66,14 @@ class UserAnime {
         
         return $result !== null;
     }
+    
+    public static function existsByAnilistId(int $userId, int $anilistId): bool {
+        $result = QueryBuilder::table('user_anime')
+            ->where('user_id', '=', $userId)
+            ->where('anilist_id', '=', $anilistId)
+            ->first();
+        
+        return $result !== null;
+    }
 }
 ?>

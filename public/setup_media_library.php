@@ -391,6 +391,36 @@ try {
     }
     
     // ============================================
+    // 步骤 13: 执行迁移 021 (Anime Anilist支持)
+    // ============================================
+    output('步骤 13: 执行迁移 021 (Anime Anilist支持)', 'title');
+    
+    $migrationFile021 = $root . '/migrations/021_add_anime_anilist_support.sql';
+    if (!file_exists($migrationFile021)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_anime LIKE 'anilist_id'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  anilist_id 列已存在，跳过", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile021);
+            try {
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt)) {
+                        $pdo->exec($stmt);
+                    }
+                }
+                output("✅ 成功添加 Anime Anilist 支持", 'success');
+            } catch (\PDOException $e) {
+                $error = "添加Anilist支持失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

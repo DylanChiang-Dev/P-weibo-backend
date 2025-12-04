@@ -607,24 +607,38 @@ class MediaLibraryController {
     
     public function addAnime(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
-        $errs = Validator::required($data, ['anime_id']);
-        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        
+        // Accept either anilist_id or anime_id
+        if (empty($data['anilist_id']) && empty($data['anime_id'])) {
+            throw new ValidationException('Bad Request', ['anilist_id or anime_id is required']);
+        }
         
         $userId = $this->getUserId($req);
-        if (UserAnime::exists($userId, (int)$data['anime_id'])) {
+        $anilistId = isset($data['anilist_id']) ? (int)$data['anilist_id'] : null;
+        $animeId = isset($data['anime_id']) ? (int)$data['anime_id'] : null;
+        
+        // Check for duplicates
+        if ($anilistId && UserAnime::existsByAnilistId($userId, $anilistId)) {
+            throw new ValidationException('Anime already in library');
+        }
+        if ($animeId && UserAnime::exists($userId, $animeId)) {
             throw new ValidationException('Anime already in library');
         }
         
         $animeData = [
             'user_id' => $userId,
-            'anime_id' => (int)$data['anime_id'],
+            'anime_id' => $animeId,
+            'anilist_id' => $anilistId,
+            'title' => $data['title'] ?? null,
+            'cover_url' => $data['cover_url'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'episodes_watched' => isset($data['episodes_watched']) ? (int)$data['episodes_watched'] : 0,
-            'total_episodes' => isset($data['total_episodes']) ? (int)$data['total_episodes'] : null,
+            'total_episodes' => isset($data['total_episodes']) && $data['total_episodes'] ? (int)$data['total_episodes'] : null,
             'status' => $data['status'] ?? 'watching',
-            'first_air_date' => $data['first_air_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'first_air_date' => $this->formatDate($data['first_air_date'] ?? null),
+            'release_date' => $this->formatDate($data['release_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? $data['date'] ?? null)
         ];
         
         $id = UserAnime::create($animeData);
