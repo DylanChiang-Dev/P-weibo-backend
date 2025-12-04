@@ -277,6 +277,42 @@ try {
     }
     
     // ============================================
+    // 步骤 9: 执行迁移 017 (修复RAWG约束支持IGDB)
+    // ============================================
+    output('步骤 9: 执行迁移 017 (修复RAWG约束)', 'title');
+    
+    $migrationFile017 = $root . '/migrations/017_fix_rawg_id_constraint.sql';
+    if (!file_exists($migrationFile017)) {
+        $error = "找不到迁移文件: $migrationFile017";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查 rawg_id 是否已经是 nullable
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_games WHERE Field = 'rawg_id'");
+        $column = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($column && $column['Null'] === 'YES') {
+            output("⚠️  rawg_id 已经是 nullable，跳过修改", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile017);
+            try {
+                // 分步执行
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt)) {
+                        $pdo->exec($stmt);
+                    }
+                }
+                output("✅ 成功修复 rawg_id 约束", 'success');
+                $success[] = "修复了 rawg_id 约束";
+            } catch (\PDOException $e) {
+                $error = "修复约束失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

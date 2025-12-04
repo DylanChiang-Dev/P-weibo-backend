@@ -71,12 +71,24 @@ class UserGame {
     }
     
     /**
-     * Check if user already has this game
+     * Check if user already has this game by RAWG ID
      */
     public static function exists(int $userId, int $rawgId): bool {
         $result = QueryBuilder::table('user_games')
             ->where('user_id', '=', $userId)
             ->where('rawg_id', '=', $rawgId)
+            ->first();
+        
+        return $result !== null;
+    }
+    
+    /**
+     * Check if user already has this game by IGDB ID
+     */
+    public static function existsByIgdbId(int $userId, int $igdbId): bool {
+        $result = QueryBuilder::table('user_games')
+            ->where('user_id', '=', $userId)
+            ->where('igdb_id', '=', $igdbId)
             ->first();
         
         return $result !== null;

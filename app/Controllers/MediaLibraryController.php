@@ -338,9 +338,13 @@ class MediaLibraryController {
         
         // Check for duplicates by either ID
         $igdbId = isset($data['igdb_id']) ? (int)$data['igdb_id'] : null;
-        $rawgId = isset($data['rawg_id']) ? (int)$data['rawg_id'] : 0;
+        $rawgId = isset($data['rawg_id']) && $data['rawg_id'] ? (int)$data['rawg_id'] : null;
         
+        // Check for duplicates
         if ($rawgId && UserGame::exists($userId, $rawgId)) {
+            throw new ValidationException('Game already in library');
+        }
+        if ($igdbId && UserGame::existsByIgdbId($userId, $igdbId)) {
             throw new ValidationException('Game already in library');
         }
         
