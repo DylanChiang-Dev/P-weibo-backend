@@ -248,6 +248,35 @@ try {
     }
     
     // ============================================
+    // 步骤 8: 执行迁移 016 (游戏元数据字段)
+    // ============================================
+    output('步骤 8: 执行迁移 016 (游戏元数据字段)', 'title');
+    
+    $migrationFile016 = $root . '/migrations/016_add_game_metadata_fields.sql';
+    if (!file_exists($migrationFile016)) {
+        $error = "找不到迁移文件: $migrationFile016";
+        output("❌ $error", 'error');
+        $errors[] = $error;
+    } else {
+        // 检查 name 列是否已存在
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_games LIKE 'name'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  name 列已存在，跳过添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile016);
+            try {
+                $pdo->exec($sql);
+                output("✅ 成功添加 name 和 cover_url 列", 'success');
+                $success[] = "添加了游戏元数据字段";
+            } catch (\PDOException $e) {
+                $error = "添加游戏元数据字段失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');

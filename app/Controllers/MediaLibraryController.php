@@ -328,25 +328,35 @@ class MediaLibraryController {
     
     public function addGame(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
-        $errs = Validator::required($data, ['rawg_id']);
-        if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
+        
+        // Accept either igdb_id or rawg_id (at least one required)
+        if (empty($data['igdb_id']) && empty($data['rawg_id'])) {
+            throw new ValidationException('Bad Request', ['igdb_id or rawg_id is required']);
+        }
         
         $userId = $this->getUserId($req);
-        if (UserGame::exists($userId, (int)$data['rawg_id'])) {
+        
+        // Check for duplicates by either ID
+        $igdbId = isset($data['igdb_id']) ? (int)$data['igdb_id'] : null;
+        $rawgId = isset($data['rawg_id']) ? (int)$data['rawg_id'] : 0;
+        
+        if ($rawgId && UserGame::exists($userId, $rawgId)) {
             throw new ValidationException('Game already in library');
         }
         
         $gameData = [
             'user_id' => $userId,
-            'rawg_id' => (int)$data['rawg_id'],
-            'igdb_id' => isset($data['igdb_id']) ? (int)$data['igdb_id'] : null,
+            'rawg_id' => $rawgId,
+            'igdb_id' => $igdbId,
+            'name' => $data['name'] ?? null,
+            'cover_url' => $data['cover_url'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,  // Accept both
             'playtime_hours' => isset($data['playtime_hours']) ? (int)$data['playtime_hours'] : null,
             'platform' => $data['platform'] ?? null,
             'status' => $data['status'] ?? 'played',
             'release_date' => $data['release_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'completed_date' => $data['completed_date'] ?? $data['date'] ?? null  // Accept both
         ];
         
         $id = UserGame::create($gameData);
@@ -367,9 +377,25 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
         
-        $allowedFields = ['igdb_id', 'my_rating', 'my_review', 'playtime_hours', 'platform', 'status', 'completed_date'];
-        foreach ($allowedFields as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        // Map frontend field names to database fields
+        $fieldMappings = [
+            'igdb_id' => 'igdb_id',
+            'name' => 'name',
+            'cover_url' => 'cover_url',
+            'my_rating' => 'my_rating',
+            'my_review' => 'my_review',
+            'review' => 'my_review',           // Frontend alias
+            'playtime_hours' => 'playtime_hours',
+            'platform' => 'platform',
+            'status' => 'status',
+            'completed_date' => 'completed_date',
+            'date' => 'completed_date'          // Frontend alias
+        ];
+        
+        foreach ($fieldMappings as $inputField => $dbField) {
+            if (isset($data[$inputField])) {
+                $updateData[$dbField] = $data[$inputField];
+            }
         }
         
         if (!empty($updateData)) UserGame::update($id, $updateData);
