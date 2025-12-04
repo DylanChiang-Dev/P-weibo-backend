@@ -23,6 +23,24 @@ class MediaLibraryController {
     }
     
     /**
+     * Format date string to MySQL DATE format (YYYY-MM-DD)
+     * Handles ISO 8601 format (2024-01-01T00:00:00Z) and standard format
+     */
+    private function formatDate(?string $date): ?string {
+        if (empty($date)) {
+            return null;
+        }
+        // Handle ISO 8601 format
+        if (strpos($date, 'T') !== false) {
+            $timestamp = strtotime($date);
+            return $timestamp ? date('Y-m-d', $timestamp) : null;
+        }
+        // Already in correct format or other format
+        $timestamp = strtotime($date);
+        return $timestamp ? date('Y-m-d', $timestamp) : null;
+    }
+    
+    /**
      * List movies
      */
     public function listMovies(Request $req): void {
@@ -355,12 +373,12 @@ class MediaLibraryController {
             'name' => $data['name'] ?? null,
             'cover_url' => $data['cover_url'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? $data['review'] ?? null,  // Accept both
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'playtime_hours' => isset($data['playtime_hours']) ? (int)$data['playtime_hours'] : null,
             'platform' => $data['platform'] ?? null,
             'status' => $data['status'] ?? 'played',
-            'release_date' => $data['release_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? $data['date'] ?? null  // Accept both
+            'release_date' => $this->formatDate($data['release_date'] ?? $data['released'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? $data['date'] ?? null)
         ];
         
         $id = UserGame::create($gameData);
@@ -456,13 +474,13 @@ class MediaLibraryController {
             'host' => $data['host'] ?? null,
             'rss_feed' => $data['rss_feed'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? $data['review'] ?? null,  // Accept both
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'episodes_listened' => isset($data['episodes_listened']) ? (int)$data['episodes_listened'] : 0,
-            'total_episodes' => isset($data['total_episodes']) ? (int)$data['total_episodes'] : null,
+            'total_episodes' => isset($data['total_episodes']) && $data['total_episodes'] ? (int)$data['total_episodes'] : null,
             'status' => $data['status'] ?? 'listening',
-            'first_release_date' => $data['first_release_date'] ?? null,
-            'release_date' => $data['release_date'] ?? null,  // Frontend format
-            'completed_date' => $data['completed_date'] ?? null
+            'first_release_date' => $this->formatDate($data['first_release_date'] ?? null),
+            'release_date' => $this->formatDate($data['release_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? $data['date'] ?? null)
         ];
         
         $id = UserPodcast::create($podcastData);
