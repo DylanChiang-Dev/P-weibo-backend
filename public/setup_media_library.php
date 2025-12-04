@@ -347,6 +347,25 @@ try {
     }
     
     // ============================================
+    // 步骤 11: 执行迁移 019 (修复播客status枚举)
+    // ============================================
+    output('步骤 11: 执行迁移 019 (修复播客status)', 'title');
+    
+    $migrationFile019 = $root . '/migrations/019_fix_podcast_status_enum.sql';
+    if (!file_exists($migrationFile019)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        $sql = file_get_contents($migrationFile019);
+        try {
+            $pdo->exec($sql);
+            output("✅ 成功添加 'listened' 到 status 枚举", 'success');
+        } catch (\PDOException $e) {
+            // 可能已经修复
+            output("ℹ️  " . $e->getMessage(), 'info');
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
