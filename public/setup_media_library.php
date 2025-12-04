@@ -366,6 +366,31 @@ try {
     }
     
     // ============================================
+    // 步骤 12: 执行迁移 020 (统一status枚举)
+    // ============================================
+    output('步骤 12: 执行迁移 020 (统一status枚举)', 'title');
+    
+    $migrationFile020 = $root . '/migrations/020_unify_status_enums.sql';
+    if (!file_exists($migrationFile020)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        $sql = file_get_contents($migrationFile020);
+        try {
+            $statements = array_filter(array_map('trim', explode(';', $sql)));
+            foreach ($statements as $stmt) {
+                if (!empty($stmt) && strpos($stmt, 'ALTER TABLE') !== false) {
+                    $pdo->exec($stmt);
+                }
+            }
+            output("✅ 成功统一所有媒体表的status枚举值", 'success');
+        } catch (\PDOException $e) {
+            $error = "修改枚举失败: " . $e->getMessage();
+            output("❌ $error", 'error');
+            $errors[] = $error;
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
