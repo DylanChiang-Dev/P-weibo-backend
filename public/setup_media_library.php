@@ -536,6 +536,215 @@ try {
     }
     
     // ============================================
+    // 步骤 17: 回填现有数据的元数据 (可选)
+    // ============================================
+    output('步骤 17: 回填现有数据的元数据', 'title');
+    
+    // 检查是否有 TMDB API Key
+    $tmdbApiKey = getenv('TMDB_API_KEY') ?: ($_ENV['TMDB_API_KEY'] ?? '');
+    $limit = (int)($_GET['limit'] ?? 50);
+    $skipBackfill = isset($_GET['skip-backfill']);
+    
+    if ($skipBackfill) {
+        output("⏭️  跳过回填（?skip-backfill 参数）", 'warning');
+    } elseif (empty($tmdbApiKey)) {
+        output("⚠️  TMDB_API_KEY 未设置，跳过 Movies/TV/Docs 回填", 'warning');
+        output("设置方法：export TMDB_API_KEY=xxx 或在 .env 中配置", 'info');
+    }
+    
+    if (!$skipBackfill) {
+        $backfillStats = ['processed' => 0, 'updated' => 0, 'failed' => 0];
+        
+        // Movies 回填
+        if (!empty($tmdbApiKey)) {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM user_movies WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL");
+            $movieCount = (int)$stmt->fetchColumn();
+            
+            if ($movieCount > 0) {
+                output("📽️  Movies 待回填: $movieCount 条（本次处理 $limit 条）", 'info');
+                
+                $stmt = $pdo->prepare("SELECT id, tmdb_id FROM user_movies WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL LIMIT :limit");
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->execute();
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($records as $record) {
+                    $backfillStats['processed']++;
+                    $details = fetchTmdbDetails($record['tmdb_id'], 'movie', $tmdbApiKey);
+                    
+                    if ($details) {
+                        backfillRecord($pdo, 'user_movies', $record['id'], $details);
+                        $backfillStats['updated']++;
+                        output("✅ Movie #{$record['id']}: {$details['title']}", 'success');
+                    } else {
+                        $backfillStats['failed']++;
+                        output("❌ Movie #{$record['id']}: 获取失败", 'error');
+                    }
+                    usleep(60000); // 60ms delay
+                }
+            } else {
+                output("✅ Movies 已全部有元数据", 'success');
+            }
+        }
+        
+        // TV Shows 回填
+        if (!empty($tmdbApiKey)) {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM user_tv_shows WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL");
+            $tvCount = (int)$stmt->fetchColumn();
+            
+            if ($tvCount > 0) {
+                output("📺  TV Shows 待回填: $tvCount 条", 'info');
+                
+                $stmt = $pdo->prepare("SELECT id, tmdb_id FROM user_tv_shows WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL LIMIT :limit");
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->execute();
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($records as $record) {
+                    $backfillStats['processed']++;
+                    $details = fetchTmdbDetails($record['tmdb_id'], 'tv', $tmdbApiKey);
+                    
+                    if ($details) {
+                        backfillRecord($pdo, 'user_tv_shows', $record['id'], $details);
+                        $backfillStats['updated']++;
+                        output("✅ TV #{$record['id']}: {$details['title']}", 'success');
+                    } else {
+                        $backfillStats['failed']++;
+                    }
+                    usleep(60000);
+                }
+            } else {
+                output("✅ TV Shows 已全部有元数据", 'success');
+            }
+        }
+        
+        // Documentaries 回填
+        if (!empty($tmdbApiKey)) {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM user_documentaries WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL");
+            $docCount = (int)$stmt->fetchColumn();
+            
+            if ($docCount > 0) {
+                output("🎬  Documentaries 待回填: $docCount 条", 'info');
+                
+                $stmt = $pdo->prepare("SELECT id, tmdb_id FROM user_documentaries WHERE (title IS NULL OR title = '') AND tmdb_id IS NOT NULL LIMIT :limit");
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->execute();
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($records as $record) {
+                    $backfillStats['processed']++;
+                    $details = fetchTmdbDetails($record['tmdb_id'], 'movie', $tmdbApiKey);
+                    if (!$details) $details = fetchTmdbDetails($record['tmdb_id'], 'tv', $tmdbApiKey);
+                    
+                    if ($details) {
+                        backfillRecord($pdo, 'user_documentaries', $record['id'], $details);
+                        $backfillStats['updated']++;
+                        output("✅ Doc #{$record['id']}: {$details['title']}", 'success');
+                    } else {
+                        $backfillStats['failed']++;
+                    }
+                    usleep(60000);
+                }
+            } else {
+                output("✅ Documentaries 已全部有元数据", 'success');
+            }
+        }
+        
+        // Anime 回填 (AniList - 不需要 API Key)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_anime WHERE (title IS NULL OR title = '') AND anilist_id IS NOT NULL");
+        $animeCount = (int)$stmt->fetchColumn();
+        
+        if ($animeCount > 0) {
+            output("🎌  Anime 待回填: $animeCount 条", 'info');
+            
+            $stmt = $pdo->prepare("SELECT id, anilist_id FROM user_anime WHERE (title IS NULL OR title = '') AND anilist_id IS NOT NULL LIMIT :limit");
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($records as $record) {
+                $backfillStats['processed']++;
+                $details = fetchAniListDetails($record['anilist_id']);
+                
+                if ($details) {
+                    backfillRecord($pdo, 'user_anime', $record['id'], $details);
+                    $backfillStats['updated']++;
+                    output("✅ Anime #{$record['id']}: {$details['title']}", 'success');
+                } else {
+                    $backfillStats['failed']++;
+                }
+                usleep(700000); // 700ms for AniList
+            }
+        } else {
+            output("✅ Anime 已全部有元数据", 'success');
+        }
+        
+        // Books 回填 (Google Books - 不需要 API Key)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL");
+        $bookCount = (int)$stmt->fetchColumn();
+        
+        if ($bookCount > 0) {
+            output("📚  Books 待回填: $bookCount 条", 'info');
+            
+            $stmt = $pdo->prepare("SELECT id, google_books_id FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL LIMIT :limit");
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($records as $record) {
+                $backfillStats['processed']++;
+                $details = fetchGoogleBooksDetails($record['google_books_id']);
+                
+                if ($details) {
+                    backfillRecord($pdo, 'user_books', $record['id'], $details);
+                    $backfillStats['updated']++;
+                    output("✅ Book #{$record['id']}: {$details['title']}", 'success');
+                } else {
+                    $backfillStats['failed']++;
+                }
+                usleep(50000);
+            }
+        } else {
+            output("✅ Books 已全部有元数据", 'success');
+        }
+        
+        // Podcasts 回填 (iTunes - 不需要 API Key)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL");
+        $podcastCount = (int)$stmt->fetchColumn();
+        
+        if ($podcastCount > 0) {
+            output("🎙️  Podcasts 待回填: $podcastCount 条", 'info');
+            
+            $stmt = $pdo->prepare("SELECT id, itunes_id FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL LIMIT :limit");
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($records as $record) {
+                $backfillStats['processed']++;
+                $details = fetchItunesDetails($record['itunes_id']);
+                
+                if ($details) {
+                    backfillRecord($pdo, 'user_podcasts', $record['id'], $details);
+                    $backfillStats['updated']++;
+                    output("✅ Podcast #{$record['id']}: {$details['title']}", 'success');
+                } else {
+                    $backfillStats['failed']++;
+                }
+                usleep(100000);
+            }
+        } else {
+            output("✅ Podcasts 已全部有元数据", 'success');
+        }
+        
+        output("回填统计: 处理 {$backfillStats['processed']}, 成功 {$backfillStats['updated']}, 失败 {$backfillStats['failed']}", 'info');
+        
+        if ($backfillStats['processed'] < $movieCount + $tvCount + $docCount + $animeCount + $bookCount + $podcastCount) {
+            output("💡 还有更多数据待回填，请多次访问此页面或增加 ?limit=100", 'warning');
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
@@ -560,5 +769,117 @@ try {
 if (!$isCli) {
     echo "<hr><p><small>提示：为了安全，生产环境部署后建议删除此脚本。</small></p>";
     echo "</body></html>";
+}
+
+// ============================================
+// Helper Functions for API calls
+// ============================================
+
+function fetchTmdbDetails(int $tmdbId, string $type, string $apiKey): ?array {
+    $url = "https://api.themoviedb.org/3/{$type}/{$tmdbId}?api_key={$apiKey}&language=zh-CN";
+    $context = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+    $response = @file_get_contents($url, false, $context);
+    if (!$response) return null;
+    
+    $data = json_decode($response, true);
+    if (!$data || isset($data['status_code'])) return null;
+    
+    $isMovie = $type === 'movie';
+    return [
+        'title' => $isMovie ? ($data['title'] ?? null) : ($data['name'] ?? null),
+        'original_title' => $isMovie ? ($data['original_title'] ?? null) : ($data['original_name'] ?? null),
+        'cover_image_cdn' => !empty($data['poster_path']) ? "https://image.tmdb.org/t/p/w500{$data['poster_path']}" : null,
+        'backdrop_image_cdn' => !empty($data['backdrop_path']) ? "https://image.tmdb.org/t/p/original{$data['backdrop_path']}" : null,
+        'overview' => $data['overview'] ?? null,
+        'genres' => !empty($data['genres']) ? json_encode(array_column($data['genres'], 'name')) : null,
+        'external_rating' => $data['vote_average'] ?? null,
+        'runtime' => $data['runtime'] ?? null,
+        'number_of_seasons' => $data['number_of_seasons'] ?? null,
+        'number_of_episodes' => $data['number_of_episodes'] ?? null,
+    ];
+}
+
+function fetchAniListDetails(int $anilistId): ?array {
+    $query = 'query ($id: Int) { Media(id: $id, type: ANIME) { title { romaji english native } coverImage { large extraLarge } bannerImage description(asHtml: false) genres averageScore format season seasonYear studios(isMain: true) { nodes { name } } source episodes } }';
+    
+    $ch = curl_init('https://graphql.anilist.co');
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_HTTPHEADER => ['Content-Type: application/json'], CURLOPT_POSTFIELDS => json_encode(['query' => $query, 'variables' => ['id' => $anilistId]]), CURLOPT_TIMEOUT => 10]);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    if (!$response) return null;
+    $data = json_decode($response, true);
+    if (!$data || !isset($data['data']['Media'])) return null;
+    
+    $media = $data['data']['Media'];
+    return [
+        'title' => $media['title']['english'] ?? $media['title']['romaji'] ?? null,
+        'original_title' => $media['title']['native'] ?? null,
+        'cover_image_cdn' => $media['coverImage']['extraLarge'] ?? $media['coverImage']['large'] ?? null,
+        'backdrop_image_cdn' => $media['bannerImage'] ?? null,
+        'overview' => $media['description'] ?? null,
+        'genres' => !empty($media['genres']) ? json_encode($media['genres']) : null,
+        'external_rating' => isset($media['averageScore']) ? $media['averageScore'] / 10 : null,
+        'format' => $media['format'] ?? null,
+        'season_info' => isset($media['season'], $media['seasonYear']) ? "{$media['season']} {$media['seasonYear']}" : null,
+        'studio' => $media['studios']['nodes'][0]['name'] ?? null,
+        'source' => $media['source'] ?? null,
+        'total_episodes' => $media['episodes'] ?? null,
+    ];
+}
+
+function fetchGoogleBooksDetails(string $bookId): ?array {
+    $url = "https://www.googleapis.com/books/v1/volumes/{$bookId}";
+    $context = stream_context_create(['http' => ['timeout' => 10]]);
+    $response = @file_get_contents($url, false, $context);
+    if (!$response) return null;
+    
+    $data = json_decode($response, true);
+    if (!$data || !isset($data['volumeInfo'])) return null;
+    
+    $info = $data['volumeInfo'];
+    return [
+        'title' => $info['title'] ?? null,
+        'cover_image_cdn' => isset($info['imageLinks']['thumbnail']) ? str_replace('http://', 'https://', $info['imageLinks']['thumbnail']) : null,
+        'overview' => $info['description'] ?? null,
+        'genres' => !empty($info['categories']) ? json_encode($info['categories']) : null,
+        'external_rating' => $info['averageRating'] ?? null,
+        'authors' => !empty($info['authors']) ? json_encode($info['authors']) : null,
+        'publisher' => $info['publisher'] ?? null,
+        'page_count' => $info['pageCount'] ?? null,
+    ];
+}
+
+function fetchItunesDetails(int $itunesId): ?array {
+    $url = "https://itunes.apple.com/lookup?id={$itunesId}&entity=podcast";
+    $context = stream_context_create(['http' => ['timeout' => 10]]);
+    $response = @file_get_contents($url, false, $context);
+    if (!$response) return null;
+    
+    $data = json_decode($response, true);
+    if (empty($data['results'][0])) return null;
+    
+    $p = $data['results'][0];
+    return [
+        'title' => $p['collectionName'] ?? $p['trackName'] ?? null,
+        'cover_image_cdn' => $p['artworkUrl600'] ?? $p['artworkUrl100'] ?? null,
+        'genres' => !empty($p['genres']) ? json_encode($p['genres']) : null,
+        'artist_name' => $p['artistName'] ?? null,
+        'feed_url' => $p['feedUrl'] ?? null,
+        'episode_count' => $p['trackCount'] ?? null,
+    ];
+}
+
+function backfillRecord(PDO $pdo, string $table, int $id, array $data): void {
+    $updates = [];
+    $params = [':id' => $id];
+    foreach ($data as $field => $value) {
+        if ($value !== null) {
+            $updates[] = "$field = :$field";
+            $params[":$field"] = $value;
+        }
+    }
+    if (empty($updates)) return;
+    $pdo->prepare("UPDATE $table SET " . implode(', ', $updates) . " WHERE id = :id")->execute($params);
 }
 ?>
