@@ -541,10 +541,23 @@ try {
     output('步骤 16.5: 检查并修复 Books 表列', 'title');
     
     $bookColumnsToAdd = [
+        // P0 核心字段
         ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
         ['name' => 'original_title', 'sql' => "ALTER TABLE user_books ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
         ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
         ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+        // P1 扩展字段
+        ['name' => 'overview', 'sql' => "ALTER TABLE user_books ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
+        ['name' => 'genres', 'sql' => "ALTER TABLE user_books ADD COLUMN genres JSON NULL AFTER overview"],
+        ['name' => 'external_rating', 'sql' => "ALTER TABLE user_books ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+        // P2 特定字段
+        ['name' => 'authors', 'sql' => "ALTER TABLE user_books ADD COLUMN authors JSON NULL AFTER external_rating"],
+        ['name' => 'publisher', 'sql' => "ALTER TABLE user_books ADD COLUMN publisher VARCHAR(255) NULL AFTER authors"],
+        ['name' => 'published_date', 'sql' => "ALTER TABLE user_books ADD COLUMN published_date DATE NULL AFTER publisher"],
+        ['name' => 'page_count', 'sql' => "ALTER TABLE user_books ADD COLUMN page_count INT NULL AFTER published_date"],
+        ['name' => 'isbn_10', 'sql' => "ALTER TABLE user_books ADD COLUMN isbn_10 VARCHAR(13) NULL AFTER page_count"],
+        ['name' => 'isbn_13', 'sql' => "ALTER TABLE user_books ADD COLUMN isbn_13 VARCHAR(17) NULL AFTER isbn_10"],
+        ['name' => 'language', 'sql' => "ALTER TABLE user_books ADD COLUMN language VARCHAR(10) NULL AFTER isbn_13"],
     ];
     
     foreach ($bookColumnsToAdd as $col) {
