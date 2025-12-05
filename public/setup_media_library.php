@@ -610,6 +610,18 @@ try {
             ['name' => 'source', 'sql' => "ALTER TABLE user_anime ADD COLUMN source VARCHAR(50) NULL AFTER studio"],
             ['name' => 'release_date', 'sql' => "ALTER TABLE user_anime ADD COLUMN release_date DATE NULL AFTER first_air_date"],
         ],
+        'user_podcasts' => [
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN cover_image_cdn TEXT NULL AFTER title"],
+            ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'artist_name', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN artist_name VARCHAR(255) NULL AFTER host"],
+            ['name' => 'feed_url', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN feed_url VARCHAR(500) NULL AFTER rss_feed"],
+            ['name' => 'episode_count', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN episode_count INT NULL AFTER total_episodes"],
+            ['name' => 'explicit', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN explicit TINYINT(1) DEFAULT 0 AFTER episode_count"],
+            ['name' => 'release_date', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN release_date DATE NULL AFTER first_release_date"],
+        ],
     ];
     
     foreach ($tablesToFix as $tableName => $columns) {
