@@ -680,61 +680,71 @@ try {
         }
         
         // Books 回填 (Google Books - 不需要 API Key)
-        $stmt = $pdo->query("SELECT COUNT(*) FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL");
-        $bookCount = (int)$stmt->fetchColumn();
-        
-        if ($bookCount > 0) {
-            output("📚  Books 待回填: $bookCount 条", 'info');
+        $bookCount = 0;
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL");
+            $bookCount = (int)$stmt->fetchColumn();
             
-            $stmt = $pdo->prepare("SELECT id, google_books_id FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL LIMIT :limit");
-            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-            $stmt->execute();
-            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($records as $record) {
-                $backfillStats['processed']++;
-                $details = fetchGoogleBooksDetails($record['google_books_id']);
+            if ($bookCount > 0) {
+                output("📚  Books 待回填: $bookCount 条", 'info');
                 
-                if ($details) {
-                    backfillRecord($pdo, 'user_books', $record['id'], $details);
-                    $backfillStats['updated']++;
-                    output("✅ Book #{$record['id']}: {$details['title']}", 'success');
-                } else {
-                    $backfillStats['failed']++;
+                $stmt = $pdo->prepare("SELECT id, google_books_id FROM user_books WHERE (title IS NULL OR title = '') AND google_books_id IS NOT NULL LIMIT :limit");
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->execute();
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($records as $record) {
+                    $backfillStats['processed']++;
+                    $details = fetchGoogleBooksDetails($record['google_books_id']);
+                    
+                    if ($details) {
+                        backfillRecord($pdo, 'user_books', $record['id'], $details);
+                        $backfillStats['updated']++;
+                        output("✅ Book #{$record['id']}: {$details['title']}", 'success');
+                    } else {
+                        $backfillStats['failed']++;
+                    }
+                    usleep(50000);
                 }
-                usleep(50000);
+            } else {
+                output("✅ Books 已全部有元数据", 'success');
             }
-        } else {
-            output("✅ Books 已全部有元数据", 'success');
+        } catch (\PDOException $e) {
+            output("⚠️  Books 回填跳过: " . $e->getMessage(), 'warning');
         }
         
         // Podcasts 回填 (iTunes - 不需要 API Key)
-        $stmt = $pdo->query("SELECT COUNT(*) FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL");
-        $podcastCount = (int)$stmt->fetchColumn();
-        
-        if ($podcastCount > 0) {
-            output("🎙️  Podcasts 待回填: $podcastCount 条", 'info');
+        $podcastCount = 0;
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL");
+            $podcastCount = (int)$stmt->fetchColumn();
             
-            $stmt = $pdo->prepare("SELECT id, itunes_id FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL LIMIT :limit");
-            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-            $stmt->execute();
-            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($records as $record) {
-                $backfillStats['processed']++;
-                $details = fetchItunesDetails($record['itunes_id']);
+            if ($podcastCount > 0) {
+                output("🎙️  Podcasts 待回填: $podcastCount 条", 'info');
                 
-                if ($details) {
-                    backfillRecord($pdo, 'user_podcasts', $record['id'], $details);
-                    $backfillStats['updated']++;
-                    output("✅ Podcast #{$record['id']}: {$details['title']}", 'success');
-                } else {
-                    $backfillStats['failed']++;
+                $stmt = $pdo->prepare("SELECT id, itunes_id FROM user_podcasts WHERE (title IS NULL OR title = '') AND itunes_id IS NOT NULL LIMIT :limit");
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->execute();
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($records as $record) {
+                    $backfillStats['processed']++;
+                    $details = fetchItunesDetails($record['itunes_id']);
+                    
+                    if ($details) {
+                        backfillRecord($pdo, 'user_podcasts', $record['id'], $details);
+                        $backfillStats['updated']++;
+                        output("✅ Podcast #{$record['id']}: {$details['title']}", 'success');
+                    } else {
+                        $backfillStats['failed']++;
+                    }
+                    usleep(100000);
                 }
-                usleep(100000);
+            } else {
+                output("✅ Podcasts 已全部有元数据", 'success');
             }
-        } else {
-            output("✅ Podcasts 已全部有元数据", 'success');
+        } catch (\PDOException $e) {
+            output("⚠️  Podcasts 回填跳过: " . $e->getMessage(), 'warning');
         }
         
         output("回填统计: 处理 {$backfillStats['processed']}, 成功 {$backfillStats['updated']}, 失败 {$backfillStats['failed']}", 'info');
