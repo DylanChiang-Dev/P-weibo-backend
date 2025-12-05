@@ -595,6 +595,21 @@ try {
             ['name' => 'publisher', 'sql' => "ALTER TABLE user_books ADD COLUMN publisher VARCHAR(255) NULL AFTER authors"],
             ['name' => 'page_count', 'sql' => "ALTER TABLE user_books ADD COLUMN page_count INT NULL AFTER publisher"],
         ],
+        'user_anime' => [
+            ['name' => 'title', 'sql' => "ALTER TABLE user_anime ADD COLUMN title VARCHAR(500) NULL AFTER anilist_id"],
+            ['name' => 'original_title', 'sql' => "ALTER TABLE user_anime ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_anime ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+            ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_anime ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_anime ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_anime ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_anime ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_anime ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
+            ['name' => 'format', 'sql' => "ALTER TABLE user_anime ADD COLUMN format VARCHAR(50) NULL AFTER backdrop_image_cdn"],
+            ['name' => 'season_info', 'sql' => "ALTER TABLE user_anime ADD COLUMN season_info VARCHAR(100) NULL AFTER format"],
+            ['name' => 'studio', 'sql' => "ALTER TABLE user_anime ADD COLUMN studio VARCHAR(255) NULL AFTER season_info"],
+            ['name' => 'source', 'sql' => "ALTER TABLE user_anime ADD COLUMN source VARCHAR(50) NULL AFTER studio"],
+            ['name' => 'release_date', 'sql' => "ALTER TABLE user_anime ADD COLUMN release_date DATE NULL AFTER first_air_date"],
+        ],
     ];
     
     foreach ($tablesToFix as $tableName => $columns) {
