@@ -98,7 +98,7 @@ class MediaLibraryController {
             'cast' => isset($data['cast']) ? json_encode($data['cast']) : null,
             // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'status' => $data['status'] ?? 'watched',
             'release_date' => $this->formatDate($data['release_date'] ?? null),
             'completed_date' => $this->formatDate($data['completed_date'] ?? null)
@@ -227,7 +227,7 @@ class MediaLibraryController {
             'networks' => isset($data['networks']) ? json_encode($data['networks']) : null,
             // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'current_season' => isset($data['current_season']) ? (int)$data['current_season'] : null,
             'current_episode' => isset($data['current_episode']) ? (int)$data['current_episode'] : null,
             'status' => $data['status'] ?? 'watching',
@@ -683,7 +683,7 @@ class MediaLibraryController {
             'networks' => isset($data['networks']) ? json_encode($data['networks']) : null,
             // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
-            'my_review' => $data['my_review'] ?? null,
+            'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'status' => $data['status'] ?? 'watched',
             'release_date' => $this->formatDate($data['release_date'] ?? null),
             'completed_date' => $this->formatDate($data['completed_date'] ?? null)
