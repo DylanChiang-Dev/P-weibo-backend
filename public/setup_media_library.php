@@ -536,6 +536,32 @@ try {
     }
     
     // ============================================
+    // 步骤 16.5: 修复 Books 表缺失的列
+    // ============================================
+    output('步骤 16.5: 检查并修复 Books 表列', 'title');
+    
+    $bookColumnsToAdd = [
+        ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
+        ['name' => 'original_title', 'sql' => "ALTER TABLE user_books ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+        ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+        ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+    ];
+    
+    foreach ($bookColumnsToAdd as $col) {
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_books LIKE '{$col['name']}'");
+        if ($stmt->rowCount() === 0) {
+            try {
+                $pdo->exec($col['sql']);
+                output("✅ 添加 user_books.{$col['name']} 列", 'success');
+            } catch (\PDOException $e) {
+                output("❌ 添加 {$col['name']} 失败: " . $e->getMessage(), 'error');
+            }
+        } else {
+            output("⚠️  user_books.{$col['name']} 已存在", 'warning');
+        }
+    }
+    
+    // ============================================
     // 步骤 17: 回填现有数据的元数据 (可选)
     // ============================================
     output('步骤 17: 回填现有数据的元数据', 'title');
