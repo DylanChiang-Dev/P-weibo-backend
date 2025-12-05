@@ -572,6 +572,8 @@ try {
             ['name' => 'genres', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN genres JSON NULL AFTER overview"],
             ['name' => 'external_rating', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
             ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
+            ['name' => 'number_of_seasons', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN number_of_seasons INT NULL AFTER backdrop_image_cdn"],
+            ['name' => 'number_of_episodes', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN number_of_episodes INT NULL AFTER number_of_seasons"],
         ],
         'user_books' => [
             ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
