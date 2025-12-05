@@ -31,9 +31,10 @@ class UserBook {
             $query->where('status', '=', $status);
         }
         
-        // Search in my_review field (case-insensitive)
+        // Search in title and my_review fields (case-insensitive)
         if ($search) {
-            $query->whereRaw('LOWER(my_review) LIKE ?', ['%' . strtolower($search) . '%']);
+            $searchTerm = '%' . strtolower($search) . '%';
+            $query->whereRaw('(LOWER(title) LIKE ? OR LOWER(my_review) LIKE ?)', [$searchTerm, $searchTerm]);
         }
         
         // Apply sorting
@@ -88,9 +89,10 @@ class UserBook {
             $query->where('status', '=', $status);
         }
         
-        // Search in my_review field (case-insensitive)
+        // Search in title and my_review fields (case-insensitive)
         if ($search) {
-            $query->whereRaw('LOWER(my_review) LIKE ?', ['%' . strtolower($search) . '%']);
+            $searchTerm = '%' . strtolower($search) . '%';
+            $query->whereRaw('(LOWER(title) LIKE ? OR LOWER(my_review) LIKE ?)', [$searchTerm, $searchTerm]);
         }
         
         return $query->count();

@@ -84,11 +84,24 @@ class MediaLibraryController {
         $movieData = [
             'user_id' => $userId,
             'tmdb_id' => (int)$data['tmdb_id'],
+            // Metadata fields
+            'title' => $data['title'] ?? null,
+            'original_title' => $data['original_title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'backdrop_image_cdn' => $data['backdrop_image_cdn'] ?? null,
+            'runtime' => isset($data['runtime']) ? (int)$data['runtime'] : null,
+            'tagline' => $data['tagline'] ?? null,
+            'director' => $data['director'] ?? null,
+            'cast' => isset($data['cast']) ? json_encode($data['cast']) : null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? null,
             'status' => $data['status'] ?? 'watched',
-            'release_date' => $data['release_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'release_date' => $this->formatDate($data['release_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? null)
         ];
         
         $id = UserMovie::create($movieData);
@@ -123,10 +136,20 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         
         $updateData = [];
-        $allowedFields = ['my_rating', 'my_review', 'status', 'completed_date'];
+        $allowedFields = [
+            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
+            'runtime', 'tagline', 'director', 'cast',
+            'my_rating', 'my_review', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres', 'cast'];
         foreach ($allowedFields as $field) {
             if (isset($data[$field])) {
-                $updateData[$field] = $data[$field];
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
             }
         }
         
@@ -190,13 +213,26 @@ class MediaLibraryController {
         $tvData = [
             'user_id' => $userId,
             'tmdb_id' => (int)$data['tmdb_id'],
+            // Metadata fields
+            'title' => $data['title'] ?? null,
+            'original_title' => $data['original_title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'backdrop_image_cdn' => $data['backdrop_image_cdn'] ?? null,
+            'number_of_seasons' => isset($data['number_of_seasons']) ? (int)$data['number_of_seasons'] : null,
+            'number_of_episodes' => isset($data['number_of_episodes']) ? (int)$data['number_of_episodes'] : null,
+            'episode_runtime' => isset($data['episode_runtime']) ? (int)$data['episode_runtime'] : null,
+            'networks' => isset($data['networks']) ? json_encode($data['networks']) : null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? null,
             'current_season' => isset($data['current_season']) ? (int)$data['current_season'] : null,
             'current_episode' => isset($data['current_episode']) ? (int)$data['current_episode'] : null,
             'status' => $data['status'] ?? 'watching',
-            'first_air_date' => $data['first_air_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'first_air_date' => $this->formatDate($data['first_air_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? null)
         ];
         
         $id = UserTvShow::create($tvData);
@@ -225,10 +261,20 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         
         $updateData = [];
-        $allowedFields = ['my_rating', 'my_review', 'current_season', 'current_episode', 'status', 'completed_date'];
+        $allowedFields = [
+            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
+            'number_of_seasons', 'number_of_episodes', 'episode_runtime', 'networks',
+            'my_rating', 'my_review', 'current_season', 'current_episode', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres', 'networks'];
         foreach ($allowedFields as $field) {
             if (isset($data[$field])) {
-                $updateData[$field] = $data[$field];
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
             }
         }
         
@@ -294,11 +340,26 @@ class MediaLibraryController {
             'user_id' => $userId,
             'google_books_id' => $data['google_books_id'] ?? null,
             'isbn' => $data['isbn'] ?? null,
+            // Metadata fields
+            'title' => $data['title'] ?? null,
+            'original_title' => $data['original_title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'authors' => isset($data['authors']) ? json_encode($data['authors']) : null,
+            'publisher' => $data['publisher'] ?? null,
+            'published_date' => $this->formatDate($data['published_date'] ?? null),
+            'page_count' => isset($data['page_count']) ? (int)$data['page_count'] : null,
+            'isbn_10' => $data['isbn_10'] ?? null,
+            'isbn_13' => $data['isbn_13'] ?? null,
+            'language' => $data['language'] ?? null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? null,
             'status' => $data['status'] ?? 'read',
-            'publication_date' => $data['publication_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'publication_date' => $this->formatDate($data['publication_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? null)
         ];
         
         $id = UserBook::create($bookData);
@@ -318,8 +379,21 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        foreach (['my_rating', 'my_review', 'status', 'completed_date'] as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        $allowedFields = [
+            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating',
+            'authors', 'publisher', 'published_date', 'page_count', 'isbn_10', 'isbn_13', 'language',
+            'my_rating', 'my_review', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres', 'authors'];
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
+            }
         }
         
         if (!empty($updateData)) UserBook::update($id, $updateData);
@@ -378,8 +452,18 @@ class MediaLibraryController {
             'user_id' => $userId,
             'rawg_id' => $rawgId,
             'igdb_id' => $igdbId,
-            'name' => $data['name'] ?? null,
-            'cover_url' => $data['cover_url'] ?? null,
+            // Metadata fields
+            'name' => $data['name'] ?? $data['title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? $data['cover_url'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'backdrop_image_cdn' => $data['backdrop_image_cdn'] ?? null,
+            'platforms' => isset($data['platforms']) ? json_encode($data['platforms']) : null,
+            'developers' => isset($data['developers']) ? json_encode($data['developers']) : null,
+            'publishers' => isset($data['publishers']) ? json_encode($data['publishers']) : null,
+            'game_modes' => isset($data['game_modes']) ? json_encode($data['game_modes']) : null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'playtime_hours' => isset($data['playtime_hours']) ? (int)$data['playtime_hours'] : null,
@@ -406,25 +490,29 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        
-        // Map frontend field names to database fields
-        $fieldMappings = [
-            'igdb_id' => 'igdb_id',
-            'name' => 'name',
-            'cover_url' => 'cover_url',
-            'my_rating' => 'my_rating',
-            'my_review' => 'my_review',
-            'review' => 'my_review',           // Frontend alias
-            'playtime_hours' => 'playtime_hours',
-            'platform' => 'platform',
-            'status' => 'status',
-            'completed_date' => 'completed_date',
-            'date' => 'completed_date'          // Frontend alias
+        $allowedFields = [
+            'name', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
+            'platforms', 'developers', 'publishers', 'game_modes',
+            'igdb_id', 'my_rating', 'my_review', 'playtime_hours', 'platform', 'status', 'completed_date'
         ];
+        $jsonFields = ['genres', 'platforms', 'developers', 'publishers', 'game_modes'];
+        $fieldAliases = ['cover_url' => 'cover_image_cdn', 'title' => 'name', 'review' => 'my_review', 'date' => 'completed_date'];
         
-        foreach ($fieldMappings as $inputField => $dbField) {
-            if (isset($data[$inputField])) {
-                $updateData[$dbField] = $data[$inputField];
+        // Handle aliases
+        foreach ($fieldAliases as $alias => $target) {
+            if (isset($data[$alias]) && !isset($data[$target])) {
+                $data[$target] = $data[$alias];
+            }
+        }
+        
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
             }
         }
         
@@ -479,8 +567,17 @@ class MediaLibraryController {
             'user_id' => $userId,
             'podcast_id' => $podcastId,
             'itunes_id' => $itunesId,
+            // Metadata fields
             'title' => $data['title'] ?? null,
-            'artwork_url' => $data['artwork_url'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? $data['artwork_url'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'artist_name' => $data['artist_name'] ?? $data['host'] ?? null,
+            'feed_url' => $data['feed_url'] ?? $data['rss_feed'] ?? null,
+            'episode_count' => isset($data['episode_count']) ? (int)$data['episode_count'] : null,
+            'explicit' => isset($data['explicit']) ? (bool)$data['explicit'] : false,
+            // Personal fields
             'host' => $data['host'] ?? null,
             'rss_feed' => $data['rss_feed'] ?? null,
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
@@ -510,8 +607,21 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        foreach (['my_rating', 'my_review', 'episodes_listened', 'status', 'completed_date'] as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        $allowedFields = [
+            'title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating',
+            'artist_name', 'feed_url', 'episode_count', 'explicit',
+            'host', 'my_rating', 'my_review', 'episodes_listened', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres'];
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
+            }
         }
         
         if (!empty($updateData)) UserPodcast::update($id, $updateData);
@@ -559,11 +669,24 @@ class MediaLibraryController {
         $docData = [
             'user_id' => $userId,
             'tmdb_id' => (int)$data['tmdb_id'],
+            // Metadata fields
+            'title' => $data['title'] ?? null,
+            'original_title' => $data['original_title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'backdrop_image_cdn' => $data['backdrop_image_cdn'] ?? null,
+            'number_of_seasons' => isset($data['number_of_seasons']) ? (int)$data['number_of_seasons'] : null,
+            'number_of_episodes' => isset($data['number_of_episodes']) ? (int)$data['number_of_episodes'] : null,
+            'episode_runtime' => isset($data['episode_runtime']) ? (int)$data['episode_runtime'] : null,
+            'networks' => isset($data['networks']) ? json_encode($data['networks']) : null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? null,
             'status' => $data['status'] ?? 'watched',
-            'release_date' => $data['release_date'] ?? null,
-            'completed_date' => $data['completed_date'] ?? null
+            'release_date' => $this->formatDate($data['release_date'] ?? null),
+            'completed_date' => $this->formatDate($data['completed_date'] ?? null)
         ];
         
         $id = UserDocumentary::create($docData);
@@ -583,8 +706,21 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        foreach (['my_rating', 'my_review', 'status', 'completed_date'] as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        $allowedFields = [
+            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
+            'number_of_seasons', 'number_of_episodes', 'episode_runtime', 'networks',
+            'my_rating', 'my_review', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres', 'networks'];
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
+            }
         }
         
         if (!empty($updateData)) UserDocumentary::update($id, $updateData);
@@ -643,8 +779,19 @@ class MediaLibraryController {
             'user_id' => $userId,
             'anime_id' => $animeId,
             'anilist_id' => $anilistId,
+            // Metadata fields
             'title' => $data['title'] ?? null,
-            'cover_url' => $data['cover_url'] ?? null,
+            'original_title' => $data['original_title'] ?? null,
+            'cover_image_cdn' => $data['cover_image_cdn'] ?? $data['cover_url'] ?? null,
+            'overview' => $data['overview'] ?? null,
+            'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
+            'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
+            'backdrop_image_cdn' => $data['backdrop_image_cdn'] ?? null,
+            'format' => $data['format'] ?? null,
+            'season_info' => $data['season_info'] ?? $data['season'] ?? null,
+            'studio' => $data['studio'] ?? null,
+            'source' => $data['source'] ?? null,
+            // Personal fields
             'my_rating' => isset($data['my_rating']) ? (float)$data['my_rating'] : null,
             'my_review' => $data['my_review'] ?? $data['review'] ?? null,
             'episodes_watched' => isset($data['episodes_watched']) ? (int)$data['episodes_watched'] : 0,
@@ -672,8 +819,30 @@ class MediaLibraryController {
         
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
-        foreach (['my_rating', 'my_review', 'episodes_watched', 'status', 'completed_date'] as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+        $allowedFields = [
+            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
+            'format', 'season_info', 'studio', 'source',
+            'my_rating', 'my_review', 'episodes_watched', 'total_episodes', 'status', 'completed_date'
+        ];
+        $jsonFields = ['genres'];
+        $fieldAliases = ['cover_url' => 'cover_image_cdn', 'season' => 'season_info', 'review' => 'my_review'];
+        
+        // Handle aliases
+        foreach ($fieldAliases as $alias => $target) {
+            if (isset($data[$alias]) && !isset($data[$target])) {
+                $data[$target] = $data[$alias];
+            }
+        }
+        
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                if (in_array($field, $jsonFields) && is_array($data[$field])) {
+                    $updateData[$field] = json_encode($data[$field]);
+                } else {
+                    $updateData[$field] = $data[$field];
+                }
+            }
         }
         
         if (!empty($updateData)) UserAnime::update($id, $updateData);
