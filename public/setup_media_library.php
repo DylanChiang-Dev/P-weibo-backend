@@ -579,8 +579,8 @@ try {
     // ============================================
     output('步骤 17: 回填现有数据的元数据', 'title');
     
-    // 检查是否有 TMDB API Key
-    $tmdbApiKey = getenv('TMDB_API_KEY') ?: ($_ENV['TMDB_API_KEY'] ?? '');
+    // 检查是否有 TMDB API Key（支持 URL 参数、环境变量）
+    $tmdbApiKey = $_GET['tmdb_key'] ?? getenv('TMDB_API_KEY') ?: ($_ENV['TMDB_API_KEY'] ?? '');
     $limit = (int)($_GET['limit'] ?? 50);
     $skipBackfill = isset($_GET['skip-backfill']);
     
