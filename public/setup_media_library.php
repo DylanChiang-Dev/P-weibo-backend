@@ -551,7 +551,11 @@ try {
             ['name' => 'genres', 'sql' => "ALTER TABLE user_movies ADD COLUMN genres JSON NULL AFTER overview"],
             ['name' => 'external_rating', 'sql' => "ALTER TABLE user_movies ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
             ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_movies ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
-            ['name' => 'runtime', 'sql' => "ALTER TABLE user_movies ADD COLUMN runtime INT NULL AFTER backdrop_image_cdn"],
+            ['name' => 'backdrop_image_local', 'sql' => "ALTER TABLE user_movies ADD COLUMN backdrop_image_local TEXT NULL AFTER backdrop_image_cdn"],
+            ['name' => 'runtime', 'sql' => "ALTER TABLE user_movies ADD COLUMN runtime INT NULL AFTER backdrop_image_local"],
+            ['name' => 'tagline', 'sql' => "ALTER TABLE user_movies ADD COLUMN tagline TEXT NULL AFTER runtime"],
+            ['name' => 'director', 'sql' => "ALTER TABLE user_movies ADD COLUMN director VARCHAR(255) NULL AFTER tagline"],
+            ['name' => 'cast', 'sql' => "ALTER TABLE user_movies ADD COLUMN cast JSON NULL AFTER director"],
         ],
         'user_tv_shows' => [
             ['name' => 'title', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN title VARCHAR(500) NULL AFTER tmdb_id"],
