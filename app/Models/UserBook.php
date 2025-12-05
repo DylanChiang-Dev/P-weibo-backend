@@ -53,10 +53,12 @@ class UserBook {
                 $query->orderBy('created_at', 'ASC');
                 break;
             case 'completed_desc':
+            case 'completed_date_desc':  // 别名
                 $query->orderBy('COALESCE(completed_date, \'1900-01-01\')', 'DESC')
                     ->orderBy('created_at', 'DESC');
                 break;
             case 'completed_asc':
+            case 'completed_date_asc':  // 别名
                 $query->orderBy('CASE WHEN completed_date IS NULL THEN 1 ELSE 0 END', 'ASC')
                     ->orderBy('completed_date', 'ASC');
                 break;
