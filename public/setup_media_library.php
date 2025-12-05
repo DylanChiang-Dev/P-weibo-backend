@@ -536,41 +536,74 @@ try {
     }
     
     // ============================================
-    // 步骤 16.5: 修复 Books 表缺失的列
+    // 步骤 16.5: 修复所有媒体表缺失的列
     // ============================================
-    output('步骤 16.5: 检查并修复 Books 表列', 'title');
+    output('步骤 16.5: 检查并修复所有媒体表缺失列', 'title');
     
-    $bookColumnsToAdd = [
-        // P0 核心字段
-        ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
-        ['name' => 'original_title', 'sql' => "ALTER TABLE user_books ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
-        ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
-        ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
-        // P1 扩展字段
-        ['name' => 'overview', 'sql' => "ALTER TABLE user_books ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
-        ['name' => 'genres', 'sql' => "ALTER TABLE user_books ADD COLUMN genres JSON NULL AFTER overview"],
-        ['name' => 'external_rating', 'sql' => "ALTER TABLE user_books ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
-        // P2 特定字段
-        ['name' => 'authors', 'sql' => "ALTER TABLE user_books ADD COLUMN authors JSON NULL AFTER external_rating"],
-        ['name' => 'publisher', 'sql' => "ALTER TABLE user_books ADD COLUMN publisher VARCHAR(255) NULL AFTER authors"],
-        ['name' => 'published_date', 'sql' => "ALTER TABLE user_books ADD COLUMN published_date DATE NULL AFTER publisher"],
-        ['name' => 'page_count', 'sql' => "ALTER TABLE user_books ADD COLUMN page_count INT NULL AFTER published_date"],
-        ['name' => 'isbn_10', 'sql' => "ALTER TABLE user_books ADD COLUMN isbn_10 VARCHAR(13) NULL AFTER page_count"],
-        ['name' => 'isbn_13', 'sql' => "ALTER TABLE user_books ADD COLUMN isbn_13 VARCHAR(17) NULL AFTER isbn_10"],
-        ['name' => 'language', 'sql' => "ALTER TABLE user_books ADD COLUMN language VARCHAR(10) NULL AFTER isbn_13"],
+    // 定义所有需要检查的表和列
+    $tablesToFix = [
+        'user_movies' => [
+            ['name' => 'title', 'sql' => "ALTER TABLE user_movies ADD COLUMN title VARCHAR(500) NULL AFTER tmdb_id"],
+            ['name' => 'original_title', 'sql' => "ALTER TABLE user_movies ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_movies ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+            ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_movies ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_movies ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_movies ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_movies ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_movies ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
+            ['name' => 'runtime', 'sql' => "ALTER TABLE user_movies ADD COLUMN runtime INT NULL AFTER backdrop_image_cdn"],
+        ],
+        'user_tv_shows' => [
+            ['name' => 'title', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN title VARCHAR(500) NULL AFTER tmdb_id"],
+            ['name' => 'original_title', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN overview TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
+            ['name' => 'number_of_seasons', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN number_of_seasons INT NULL AFTER backdrop_image_cdn"],
+            ['name' => 'number_of_episodes', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN number_of_episodes INT NULL AFTER number_of_seasons"],
+        ],
+        'user_documentaries' => [
+            ['name' => 'title', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN title VARCHAR(500) NULL AFTER tmdb_id"],
+            ['name' => 'original_title', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN overview TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
+        ],
+        'user_books' => [
+            ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
+            ['name' => 'original_title', 'sql' => "ALTER TABLE user_books ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
+            ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
+            ['name' => 'overview', 'sql' => "ALTER TABLE user_books ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
+            ['name' => 'genres', 'sql' => "ALTER TABLE user_books ADD COLUMN genres JSON NULL AFTER overview"],
+            ['name' => 'external_rating', 'sql' => "ALTER TABLE user_books ADD COLUMN external_rating DECIMAL(3,1) NULL AFTER genres"],
+            ['name' => 'authors', 'sql' => "ALTER TABLE user_books ADD COLUMN authors JSON NULL AFTER external_rating"],
+            ['name' => 'publisher', 'sql' => "ALTER TABLE user_books ADD COLUMN publisher VARCHAR(255) NULL AFTER authors"],
+            ['name' => 'page_count', 'sql' => "ALTER TABLE user_books ADD COLUMN page_count INT NULL AFTER publisher"],
+        ],
     ];
     
-    foreach ($bookColumnsToAdd as $col) {
-        $stmt = $pdo->query("SHOW COLUMNS FROM user_books LIKE '{$col['name']}'");
-        if ($stmt->rowCount() === 0) {
-            try {
-                $pdo->exec($col['sql']);
-                output("✅ 添加 user_books.{$col['name']} 列", 'success');
-            } catch (\PDOException $e) {
-                output("❌ 添加 {$col['name']} 失败: " . $e->getMessage(), 'error');
+    foreach ($tablesToFix as $tableName => $columns) {
+        $addedCount = 0;
+        foreach ($columns as $col) {
+            $stmt = $pdo->query("SHOW COLUMNS FROM $tableName LIKE '{$col['name']}'");
+            if ($stmt->rowCount() === 0) {
+                try {
+                    $pdo->exec($col['sql']);
+                    $addedCount++;
+                } catch (\PDOException $e) {
+                    output("❌ $tableName.{$col['name']} 添加失败: " . $e->getMessage(), 'error');
+                }
             }
+        }
+        if ($addedCount > 0) {
+            output("✅ $tableName: 添加了 $addedCount 个缺失列", 'success');
         } else {
-            output("⚠️  user_books.{$col['name']} 已存在", 'warning');
+            output("⚠️  $tableName: 所有列已存在", 'warning');
         }
     }
     
