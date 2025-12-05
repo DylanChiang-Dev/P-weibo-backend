@@ -421,6 +421,121 @@ try {
     }
     
     // ============================================
+    // 步骤 14: 执行迁移 022 (媒体元数据P0核心字段)
+    // ============================================
+    output('步骤 14: 执行迁移 022 (媒体元数据P0核心字段)', 'title');
+    
+    $migrationFile022 = $root . '/migrations/022_add_media_metadata_p0.sql';
+    if (!file_exists($migrationFile022)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        // 检查 title 列是否已存在于 user_movies
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_movies LIKE 'title'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  title 列已存在，跳过P0字段添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile022);
+            try {
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt) && stripos($stmt, '--') !== 0) {
+                        try {
+                            $pdo->exec($stmt);
+                        } catch (\PDOException $e) {
+                            // 忽略列已存在的错误
+                            if (strpos($e->getMessage(), '1060') === false) {
+                                throw $e;
+                            }
+                        }
+                    }
+                }
+                output("✅ 成功添加P0核心字段 (title, cover_image_cdn等)", 'success');
+                $success[] = "添加了P0元数据核心字段";
+            } catch (\PDOException $e) {
+                $error = "添加P0字段失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
+    // 步骤 15: 执行迁移 023 (媒体元数据P1扩展字段)
+    // ============================================
+    output('步骤 15: 执行迁移 023 (媒体元数据P1扩展字段)', 'title');
+    
+    $migrationFile023 = $root . '/migrations/023_add_media_metadata_p1.sql';
+    if (!file_exists($migrationFile023)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        // 检查 overview 列是否已存在于 user_movies
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_movies LIKE 'overview'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  overview 列已存在，跳过P1字段添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile023);
+            try {
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt) && stripos($stmt, '--') !== 0) {
+                        try {
+                            $pdo->exec($stmt);
+                        } catch (\PDOException $e) {
+                            if (strpos($e->getMessage(), '1060') === false) {
+                                throw $e;
+                            }
+                        }
+                    }
+                }
+                output("✅ 成功添加P1扩展字段 (overview, genres, external_rating等)", 'success');
+                $success[] = "添加了P1元数据扩展字段";
+            } catch (\PDOException $e) {
+                $error = "添加P1字段失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
+    // 步骤 16: 执行迁移 024 (媒体特定字段)
+    // ============================================
+    output('步骤 16: 执行迁移 024 (媒体特定字段)', 'title');
+    
+    $migrationFile024 = $root . '/migrations/024_add_media_specific_fields.sql';
+    if (!file_exists($migrationFile024)) {
+        output("⚠️  迁移文件不存在，跳过", 'warning');
+    } else {
+        // 检查 runtime 列是否已存在于 user_movies
+        $stmt = $pdo->query("SHOW COLUMNS FROM user_movies LIKE 'runtime'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  runtime 列已存在，跳过P2字段添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile024);
+            try {
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($statements as $stmt) {
+                    if (!empty($stmt) && stripos($stmt, '--') !== 0) {
+                        try {
+                            $pdo->exec($stmt);
+                        } catch (\PDOException $e) {
+                            if (strpos($e->getMessage(), '1060') === false) {
+                                throw $e;
+                            }
+                        }
+                    }
+                }
+                output("✅ 成功添加P2媒体特定字段 (runtime, director, authors等)", 'success');
+                $success[] = "添加了P2媒体特定字段";
+            } catch (\PDOException $e) {
+                $error = "添加P2字段失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 总结
     // ============================================
     output('安装总结', 'title');
