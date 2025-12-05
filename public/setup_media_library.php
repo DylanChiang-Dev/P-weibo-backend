@@ -554,6 +554,7 @@ try {
     
     if (!$skipBackfill) {
         $backfillStats = ['processed' => 0, 'updated' => 0, 'failed' => 0];
+        $movieCount = $tvCount = $docCount = $animeCount = $bookCount = $podcastCount = 0;
         
         // Movies 回填
         if (!empty($tmdbApiKey)) {
