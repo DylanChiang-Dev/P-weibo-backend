@@ -563,6 +563,8 @@ try {
             ['name' => 'backdrop_image_cdn', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN backdrop_image_cdn TEXT NULL AFTER external_rating"],
             ['name' => 'number_of_seasons', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN number_of_seasons INT NULL AFTER backdrop_image_cdn"],
             ['name' => 'number_of_episodes', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN number_of_episodes INT NULL AFTER number_of_seasons"],
+            ['name' => 'episode_runtime', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN episode_runtime INT NULL AFTER number_of_episodes"],
+            ['name' => 'networks', 'sql' => "ALTER TABLE user_tv_shows ADD COLUMN networks JSON NULL AFTER episode_runtime"],
         ],
         'user_documentaries' => [
             ['name' => 'title', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN title VARCHAR(500) NULL AFTER tmdb_id"],
