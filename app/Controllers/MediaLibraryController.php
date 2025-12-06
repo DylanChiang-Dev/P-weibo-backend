@@ -576,7 +576,7 @@ class MediaLibraryController {
             'artist_name' => $data['artist_name'] ?? $data['host'] ?? null,
             'feed_url' => $data['feed_url'] ?? $data['rss_feed'] ?? null,
             'episode_count' => isset($data['episode_count']) ? (int)$data['episode_count'] : null,
-            'explicit' => isset($data['explicit']) ? (bool)$data['explicit'] : false,
+            'explicit' => isset($data['explicit']) ? (int)(bool)$data['explicit'] : 0,
             // Personal fields
             'host' => $data['host'] ?? null,
             'rss_feed' => $data['rss_feed'] ?? null,
