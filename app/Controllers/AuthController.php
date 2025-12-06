@@ -45,14 +45,16 @@ class AuthController {
 
     public function login(Request $req): void {
         $config = \config();
-        $limiter = new RateLimitService(
-            $config['log']['path'] . '/ratelimit',
-            $config['app_env'] === 'production' ? 5 : 1000,
-            $config['app_env'] === 'production' ? 600 : 60
-        );
-        if (!$limiter->check('login:' . $req->ip())) {
-            ApiResponse::error('Too many login attempts. Please try again later.', 429);
-        }
+        // TEMPORARILY DISABLED: Rate Limit for login (for development/migration scripts)
+        // Uncomment when done with migration
+        // $limiter = new RateLimitService(
+        //     $config['log']['path'] . '/ratelimit',
+        //     $config['app_env'] === 'production' ? 5 : 1000,
+        //     $config['app_env'] === 'production' ? 600 : 60
+        // );
+        // if (!$limiter->check('login:' . $req->ip())) {
+        //     ApiResponse::error('Too many login attempts. Please try again later.', 429);
+        // }
         $data = is_array($req->body) ? $req->body : [];
         $errs = Validator::required($data, ['email', 'password']);
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);

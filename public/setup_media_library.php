@@ -611,7 +611,7 @@ try {
             ['name' => 'release_date', 'sql' => "ALTER TABLE user_anime ADD COLUMN release_date DATE NULL AFTER first_air_date"],
         ],
         'user_podcasts' => [
-            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN cover_image_cdn TEXT NULL AFTER title"],
+            ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN cover_image_cdn TEXT NULL AFTER artwork_url"],
             ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
             ['name' => 'overview', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN overview TEXT NULL AFTER cover_image_local"],
             ['name' => 'genres', 'sql' => "ALTER TABLE user_podcasts ADD COLUMN genres JSON NULL AFTER overview"],
