@@ -29,7 +29,7 @@ FRONTEND_ORIGIN=https://blog.yourdomain.com
 **开发+生产混合**（最灵活）：
 ```bash
 # 同时允许开发和生产环境
-FRONTEND_ORIGIN=http://localhost:4321,https://blog.yourdomain.com
+FRONTEND_ORIGIN=http://localhost:4321,http://127.0.0.1:4321,https://p-blog-frontend.pages.dev,https://pyq.3331322.xyz,https://p-memory-lane.pages.dev,https://blog.yourdomain.com
 ```
 
 **临时调试（不推荐用于生产）**：
