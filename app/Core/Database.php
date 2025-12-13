@@ -18,7 +18,13 @@ class Database {
         try {
             self::$pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
         } catch (PDOException $e) {
-            Logger::error('db_connect_failed', ['error' => $e->getMessage()]);
+            Logger::error('db_connect_failed', [
+                'error' => $e->getMessage(),
+                'host' => $db['host'] ?? null,
+                'port' => $db['port'] ?? null,
+                'name' => $db['name'] ?? null,
+                'user' => $db['user'] ?? null,
+            ]);
             throw new ServiceUnavailableException(
                 'Database unavailable',
                 0,

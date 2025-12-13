@@ -2,7 +2,7 @@
 namespace App\Core;
 
 class Logger {
-    private static string $logDir;
+    private static ?string $logDir = null;
 
     public static function init(string $logPath): void {
         self::$logDir = rtrim($logPath, '/');
@@ -12,6 +12,10 @@ class Logger {
     }
 
     private static function write(string $level, string $event, array $context = []): void {
+        if (self::$logDir === null || self::$logDir === '') {
+            return;
+        }
+
         $file = self::$logDir . '/' . date('Y-m-d') . '.log';
         $record = [
             'ts' => date('c'),
