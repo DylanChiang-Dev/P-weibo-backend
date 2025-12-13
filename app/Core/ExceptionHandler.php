@@ -57,8 +57,44 @@ class ExceptionHandler {
         $allowedOrigin = $config['frontend_origin'] ?? '*';
         $allowedOrigins = array_map('trim', explode(',', $allowedOrigin));
         
-        // Check if origin is allowed
-        $isAllowed = in_array($origin, $allowedOrigins) || in_array('*', $allowedOrigins);
+        // Check if origin is allowed (including localhost/127.0.0.1 developer convenience)
+        $isAllowed = in_array('*', $allowedOrigins, true) || in_array($origin, $allowedOrigins, true);
+
+        if (!$isAllowed) {
+            $originParts = parse_url($origin);
+            if (is_array($originParts) && isset($originParts['scheme'], $originParts['host'])) {
+                $originScheme = strtolower((string)$originParts['scheme']);
+                $originHost = strtolower((string)$originParts['host']);
+                $originPort = (int)($originParts['port'] ?? ($originScheme === 'https' ? 443 : 80));
+
+                $loopbackHosts = ['localhost', '127.0.0.1', '::1'];
+                if (in_array($originHost, $loopbackHosts, true)) {
+                    foreach ($allowedOrigins as $allowed) {
+                        if ($allowed === '' || $allowed === '*') {
+                            continue;
+                        }
+
+                        $allowedParts = parse_url($allowed);
+                        if (!is_array($allowedParts) || !isset($allowedParts['scheme'], $allowedParts['host'])) {
+                            continue;
+                        }
+
+                        $allowedScheme = strtolower((string)$allowedParts['scheme']);
+                        $allowedHost = strtolower((string)$allowedParts['host']);
+                        $allowedPort = (int)($allowedParts['port'] ?? ($allowedScheme === 'https' ? 443 : 80));
+
+                        if (
+                            $allowedScheme === $originScheme &&
+                            $allowedPort === $originPort &&
+                            in_array($allowedHost, $loopbackHosts, true)
+                        ) {
+                            $isAllowed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
         
         if ($isAllowed) {
             header('Access-Control-Allow-Origin: ' . $origin);

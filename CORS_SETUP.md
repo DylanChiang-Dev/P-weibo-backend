@@ -17,7 +17,7 @@ from origin 'http://localhost:4321' has been blocked by CORS policy
 **开发环境（推荐）**：
 ```bash
 # 允许开发环境 localhost 访问
-FRONTEND_ORIGIN=http://localhost:4321,http://localhost:3000
+FRONTEND_ORIGIN=http://localhost:4321,http://127.0.0.1:4321,http://localhost:3000
 ```
 
 **生产环境**：

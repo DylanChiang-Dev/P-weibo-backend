@@ -3,8 +3,7 @@
 
 declare(strict_types=1);
 
-// Enable error display for debugging (remove in production after setup)
-ini_set('display_errors', 1);
+// Error reporting (avoid leaking details in production)
 error_reporting(E_ALL);
 
 $root = dirname(__DIR__);
@@ -21,6 +20,9 @@ if (!file_exists($root . '/.env')) {
 
 require_once $root . '/config/config.php';
 $config = config();
+
+// Enable/disable error display based on environment
+ini_set('display_errors', ($config['app_env'] ?? 'development') === 'production' ? '0' : '1');
 
 // Autoload：將 App\Name\Class 對應到 app/Name/Class.php
 spl_autoload_register(function (string $class) use ($root) {
@@ -41,23 +43,39 @@ use App\Core\Database;
 use App\Core\Auth;
 use App\Core\ExceptionHandler;
 use App\Middleware\CorsMiddleware;
-
-// 初始化核心
-Logger::init($config['log']['path']);
-Database::init($config['db']);
-Auth::init($config['jwt'], $config['app_url']);
-
-$request = Request::fromGlobals();
-$router = new Router($request);
-
-// 添加全局中間件
-$router->addGlobalMiddleware(new CorsMiddleware($config['frontend_origin']));
-
-// 路由註冊
 use App\Controllers\AuthController;
 use App\Controllers\PostController;
 use App\Controllers\UserController;
+use App\Controllers\BlogController;
+use App\Controllers\BlogCategoryController;
+use App\Controllers\BlogTagController;
+use App\Controllers\BlogCommentController;
+use App\Controllers\BlogFeedController;
+use App\Controllers\MediaController;
+use App\Controllers\ActivityController;
+use App\Controllers\MediaLibraryController;
+use App\Controllers\UserSettingsController;
+use App\Middleware\AdminMiddleware;
+use App\Middleware\OptionalAuthMiddleware;
 
+// Create request and apply CORS headers as early as possible.
+// This ensures preflight and error responses still include CORS even if DB init fails.
+$request = Request::fromGlobals();
+$cors = new CorsMiddleware($config['frontend_origin']);
+$cors->handle($request, fn ($req) => null);
+
+// 初始化核心 + 路由註冊與執行
+try {
+    Logger::init($config['log']['path']);
+    Database::init($config['db']);
+    Auth::init($config['jwt'], $config['app_url']);
+
+    $router = new Router($request);
+
+    // 添加全局中間件（保留：讓路由層也能覆蓋 CORS/OPTIONS 行為）
+    $router->addGlobalMiddleware(new CorsMiddleware($config['frontend_origin']));
+
+// 路由註冊
 // Auth
 // Registration disabled - this is a single-user personal blog
 // $router->post('/api/register', [AuthController::class, 'register']);
@@ -66,9 +84,6 @@ $router->post('/api/refresh', [AuthController::class, 'refresh']);
 $router->post('/api/token/refresh', [AuthController::class, 'refresh']); // New endpoint
 $router->post('/api/logout', [AuthController::class, 'logout'], ['auth' => true]);
 $router->get('/api/me', [AuthController::class, 'me'], ['auth' => true]);
-
-use App\Middleware\AdminMiddleware;
-use App\Middleware\OptionalAuthMiddleware;
 
 // Posts
 $router->post('/api/posts', [PostController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
@@ -85,10 +100,6 @@ $router->post('/api/posts/{id}/pin', [PostController::class, 'pin'], ['middlewar
 $router->post('/api/posts/{id}/unpin', [PostController::class, 'unpin'], ['middleware' => [AdminMiddleware::class]]);
 
 // Blog
-use App\Controllers\BlogController;
-use App\Controllers\BlogCategoryController;
-use App\Controllers\BlogTagController;
-
 $router->post('/api/blog/articles', [BlogController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
 $router->get('/api/blog/articles', [BlogController::class, 'list'], ['middleware' => [OptionalAuthMiddleware::class]]);
 $router->get('/api/blog/articles/{slug}', [BlogController::class, 'get'], ['middleware' => [OptionalAuthMiddleware::class]]);
@@ -108,8 +119,6 @@ $router->get('/api/blog/tags', [BlogTagController::class, 'list']);
 $router->post('/api/blog/tags', [BlogTagController::class, 'create'], ['middleware' => [AdminMiddleware::class]]);
 
 // Blog Comments & Likes
-use App\Controllers\BlogCommentController;
-
 $router->get('/api/blog/articles/{id}/comments', [BlogCommentController::class, 'list']);
 $router->post('/api/blog/articles/{id}/comments', [BlogCommentController::class, 'create']); // Guests allowed
 $router->get('/api/blog/comments/pending', [BlogCommentController::class, 'getPending'], ['middleware' => [AdminMiddleware::class]]);
@@ -121,8 +130,6 @@ $router->post('/api/blog/articles/{id}/like', [BlogController::class, 'like']); 
 $router->get('/api/blog/articles/{id}/like-status', [BlogController::class, 'getLikeStatus']);
 
 // Blog SEO & Discovery
-use App\Controllers\BlogFeedController;
-
 $router->get('/api/blog/rss.xml', [BlogFeedController::class, 'rss']);
 $router->get('/api/blog/sitemap.xml', [BlogFeedController::class, 'sitemap']);
 $router->get('/api/blog/archives', [BlogFeedController::class, 'archives']);
@@ -131,23 +138,17 @@ $router->get('/api/blog/search', [BlogController::class, 'search']);
 
 
 // Media
-use App\Controllers\MediaController;
-
 $router->get('/api/media', [MediaController::class, 'list'], ['auth' => true]);
 $router->post('/api/media', [MediaController::class, 'upload'], ['auth' => true]);
 $router->delete('/api/media/{id}', [MediaController::class, 'delete'], ['auth' => true]);
 
 // Activities
-use App\Controllers\ActivityController;
-
 $router->post('/api/activities/checkin', [ActivityController::class, 'checkin'], ['middleware' => [AdminMiddleware::class]]);
 $router->get('/api/activities/heatmap', [ActivityController::class, 'heatmap']); // Public
 $router->get('/api/activities/stats', [ActivityController::class, 'stats']); // Public
 $router->get('/api/activities/daily', [ActivityController::class, 'daily']); // Public
 
 // Media Library
-use App\Controllers\MediaLibraryController;
-
 // Movies
 $router->get('/api/library/movies', [MediaLibraryController::class, 'listMovies']); // Public
 $router->post('/api/library/movies', [MediaLibraryController::class, 'addMovie'], ['middleware' => [AdminMiddleware::class]]);
@@ -204,13 +205,10 @@ $router->get('/api/users/{email}', [UserController::class, 'show']); // User pro
 $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => true]); // Update own profile (POST for file upload)
 
 // User Settings (API Keys)
-use App\Controllers\UserSettingsController;
-
 $router->get('/api/user/settings', [UserSettingsController::class, 'getSettings'], ['auth' => true]);
 $router->post('/api/user/settings', [UserSettingsController::class, 'saveSettings'], ['auth' => true]);
 
 // 執行
-try {
     $router->dispatch();
 } catch (Throwable $e) {
     ExceptionHandler::handle($e);

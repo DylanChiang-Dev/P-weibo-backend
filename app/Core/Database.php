@@ -3,6 +3,7 @@ namespace App\Core;
 
 use PDO;
 use PDOException;
+use App\Exceptions\ServiceUnavailableException;
 
 class Database {
     private static ?PDO $pdo = null;
@@ -18,7 +19,12 @@ class Database {
             self::$pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
         } catch (PDOException $e) {
             Logger::error('db_connect_failed', ['error' => $e->getMessage()]);
-            throw $e;
+            throw new ServiceUnavailableException(
+                'Database unavailable',
+                0,
+                ['reason' => 'db_connect_failed'],
+                $e
+            );
         }
     }
 
