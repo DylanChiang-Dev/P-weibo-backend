@@ -30,6 +30,21 @@ class ExceptionHandler {
             $statusCode = $e->getStatusCode();
             $message = $e->getMessage();
             $details = $e->getErrorDetails();
+        } elseif ($e instanceof \RuntimeException) {
+            $code = (int)$e->getCode();
+            if ($code >= 400 && $code <= 499) {
+                $statusCode = $code;
+                $message = $e->getMessage() ?: 'Bad Request';
+                $details = null;
+            } elseif ($code >= 500 && $code <= 599) {
+                $statusCode = $code;
+                $message = 'Internal Server Error';
+                $details = null;
+            } else {
+                $statusCode = 500;
+                $message = 'Internal Server Error';
+                $details = null;
+            }
         } else {
             // Unknown exception - don't leak internal details
             $statusCode = 500;

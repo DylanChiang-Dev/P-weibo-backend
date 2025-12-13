@@ -80,7 +80,7 @@ class Auth {
                 }
             } catch (\Throwable $dbError) {
                 // Database error, but token is valid - return basic info
-                \App\Core\Logger::warning('database_error_in_auth', [
+                \App\Core\Logger::warn('database_error_in_auth', [
                     'user_id' => $userId,
                     'error' => $dbError->getMessage()
                 ]);
