@@ -34,10 +34,28 @@ function config(): array {
         return $env[$key] ?? $default;
     };
 
+    $frontendOriginRaw = $get('FRONTEND_ORIGIN', 'http://localhost:3000');
+    $frontendOrigins = array_values(array_filter(array_map('trim', explode(',', $frontendOriginRaw)), fn ($v) => $v !== ''));
+
+    // Always allow known production frontends to avoid manual server edits on deploy.
+    $alwaysAllowedOrigins = [
+        'https://p-blog-frontend.pages.dev',
+        'https://pyq.3331322.xyz',
+        'https://p-memory-lane.pages.dev',
+    ];
+
+    if (!in_array('*', $frontendOrigins, true)) {
+        foreach ($alwaysAllowedOrigins as $origin) {
+            if (!in_array($origin, $frontendOrigins, true)) {
+                $frontendOrigins[] = $origin;
+            }
+        }
+    }
+
     $config = [
         'app_env' => $get('APP_ENV', 'development'),
         'app_url' => $get('APP_URL', 'http://localhost'),
-        'frontend_origin' => $get('FRONTEND_ORIGIN', 'http://localhost:3000'),
+        'frontend_origin' => implode(',', $frontendOrigins),
         'db' => [
             'host' => $get('DB_HOST', '127.0.0.1'),
             'port' => (int)$get('DB_PORT', 3306),
