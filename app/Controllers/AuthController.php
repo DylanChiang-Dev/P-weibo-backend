@@ -21,6 +21,16 @@ class AuthController {
         $this->authService = new AuthService();
     }
 
+    private function cookieBaseOptions(array $config): array {
+        return [
+            'path' => '/',
+            'domain' => $config['cookie']['domain'] ?? '',
+            'secure' => (bool)($config['cookie']['secure'] ?? ($config['app_env'] !== 'development')),
+            'httponly' => true,
+            'samesite' => $config['cookie']['samesite'] ?? 'None',
+        ];
+    }
+
     public function register(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
         $errs = Validator::required($data, ['email', 'password']);
@@ -60,11 +70,15 @@ class AuthController {
         if (!empty($errs)) throw new ValidationException('Bad Request', $errs);
 
         $tokens = $this->authService->login($data['email'], $data['password'], $req->userAgent(), $req->ip());
-        
-        Response::setCookie('refresh_token', $tokens['refresh_token'], [
-            'expires' => time() + $config['jwt']['refresh_ttl'],
-            'path' => '/', 'secure' => $config['app_env'] !== 'development', 'httponly' => true, 'samesite' => 'None'
+
+        $cookieBase = $this->cookieBaseOptions($config);
+        Response::setCookie('refresh_token', $tokens['refresh_token'], $cookieBase + [
+            'expires' => time() + (int)$config['jwt']['refresh_ttl'],
         ]);
+        Response::setCookie('access_token', $tokens['access_token'], $cookieBase + [
+            'expires' => time() + (int)$config['jwt']['access_ttl'],
+        ]);
+
         unset($tokens['refresh_token']);
         ApiResponse::success($tokens);
     }
@@ -74,30 +88,40 @@ class AuthController {
         $refresh = $req->cookies['refresh_token'] ?? (is_array($req->body) ? ($req->body['refresh_token'] ?? null) : null);
         
         if (!$refresh) {
-            Response::clearCookie('refresh_token');
+            $cookieBase = $this->cookieBaseOptions($config);
+            Response::clearCookie('refresh_token', $cookieBase);
+            Response::clearCookie('access_token', $cookieBase);
             ApiResponse::error('Missing refresh token', 401);
         }
 
         try {
             $tokens = $this->authService->refresh($refresh);
-            Response::setCookie('refresh_token', $tokens['refresh_token'], [
-                'expires' => time() + $config['jwt']['refresh_ttl'],
-                'path' => '/', 'secure' => $config['app_env'] !== 'development', 'httponly' => true, 'samesite' => 'None'
+            $cookieBase = $this->cookieBaseOptions($config);
+            Response::setCookie('refresh_token', $tokens['refresh_token'], $cookieBase + [
+                'expires' => time() + (int)$config['jwt']['refresh_ttl'],
+            ]);
+            Response::setCookie('access_token', $tokens['access_token'], $cookieBase + [
+                'expires' => time() + (int)$config['jwt']['access_ttl'],
             ]);
             unset($tokens['refresh_token']);
             ApiResponse::success($tokens);
         } catch (\Throwable $e) {
-             Response::clearCookie('refresh_token');
+             $cookieBase = $this->cookieBaseOptions($config);
+             Response::clearCookie('refresh_token', $cookieBase);
+             Response::clearCookie('access_token', $cookieBase);
              ApiResponse::error('Refresh token invalid or expired', 401);
         }
     }
 
     public function logout(Request $req): void {
+        $config = \config();
         $refresh = $req->cookies['refresh_token'] ?? (is_array($req->body) ? ($req->body['refresh_token'] ?? null) : null);
         if ($refresh) {
             $this->authService->logout($refresh);
         }
-        Response::clearCookie('refresh_token');
+        $cookieBase = $this->cookieBaseOptions($config);
+        Response::clearCookie('refresh_token', $cookieBase);
+        Response::clearCookie('access_token', $cookieBase);
         ApiResponse::success();
     }
 

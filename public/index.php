@@ -43,6 +43,7 @@ use App\Core\Database;
 use App\Core\Auth;
 use App\Core\ExceptionHandler;
 use App\Middleware\CorsMiddleware;
+use App\Services\TokenService;
 use App\Controllers\AuthController;
 use App\Controllers\PostController;
 use App\Controllers\UserController;
@@ -69,6 +70,7 @@ try {
     Logger::init($config['log']['path']);
     Database::init($config['db']);
     Auth::init($config['jwt'], $config['app_url']);
+    TokenService::init($config['jwt']);
 
     $router = new Router($request);
 

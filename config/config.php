@@ -56,6 +56,13 @@ function config(): array {
         'app_env' => $get('APP_ENV', 'development'),
         'app_url' => $get('APP_URL', 'http://localhost'),
         'frontend_origin' => implode(',', $frontendOrigins),
+        'cookie' => [
+            // If you need a shared cookie across subdomains, set COOKIE_DOMAIN=.3331322.xyz
+            'domain' => $get('COOKIE_DOMAIN', ''),
+            // For cross-site XHR (e.g. pages.dev), this must be None + Secure.
+            'samesite' => $get('COOKIE_SAMESITE', 'None'),
+            'secure' => (bool)(($get('COOKIE_SECURE')) ?? ($get('APP_ENV', 'development') !== 'development')),
+        ],
         'db' => [
             'host' => $get('DB_HOST', '127.0.0.1'),
             'port' => (int)$get('DB_PORT', 3306),

@@ -13,7 +13,7 @@ use Closure;
  */
 class OptionalAuthMiddleware implements Middleware {
     public function handle(Request $request, Closure $next): mixed {
-        $token = $request->bearerToken();
+        $token = $request->bearerToken() ?? ($request->cookies['access_token'] ?? null);
         
         if ($token) {
             try {
