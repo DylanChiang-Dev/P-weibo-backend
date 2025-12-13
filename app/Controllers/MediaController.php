@@ -5,9 +5,27 @@ use App\Core\Request;
 use App\Core\ApiResponse;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ForbiddenException;
+use App\Exceptions\ValidationException;
 use App\Models\Media;
 
 class MediaController {
+    private function enforceUploadLimits(array $files, array $uploadConfig): void {
+        $maxFiles = (int)($uploadConfig['max_files_per_request'] ?? 20);
+        if ($maxFiles > 0 && count($files) > $maxFiles) {
+            throw new ValidationException("Too many files. Max: {$maxFiles}");
+        }
+
+        $maxTotalMb = (int)($uploadConfig['max_total_upload_mb'] ?? 150);
+        if ($maxTotalMb > 0) {
+            $totalBytes = 0;
+            foreach ($files as $file) {
+                $totalBytes += (int)($file['size'] ?? 0);
+            }
+            if ($totalBytes > $maxTotalMb * 1024 * 1024) {
+                throw new ValidationException("Total upload too large. Max: {$maxTotalMb}MB");
+            }
+        }
+    }
     /**
      * Normalize $_FILES array structure
      * Converts both single and multiple file uploads to a consistent format
@@ -99,11 +117,17 @@ class MediaController {
             
                 if (empty($req->files['files'])) {
                 \App\Core\Logger::warn('no_files_provided');
-                throw new \App\Exceptions\ValidationException('No files provided');
+                throw new ValidationException('No files provided');
             }
 
             // Normalize files array structure
             $files = $this->normalizeFiles($req->files['files']);
+            $config = config();
+            $uploadPath = $config['upload']['path'];
+            $appUrl = rtrim($config['app_url'], '/');
+
+            // Resource protections: file count + total bytes
+            $this->enforceUploadLimits($files, $config['upload']);
             
             \App\Core\Logger::info('files_normalized', [
                 'count' => count($files),
@@ -113,10 +137,6 @@ class MediaController {
                     'error' => $f['error'] ?? -1
                 ], $files)
             ]);
-
-            $config = config();
-            $uploadPath = $config['upload']['path'];
-            $appUrl = rtrim($config['app_url'], '/');
             
             \App\Core\Logger::info('upload_config', [
                 'upload_path' => $uploadPath,
@@ -159,6 +179,25 @@ class MediaController {
                         $errors[] = [
                             'filename' => $file['name'] ?? "file_$index",
                             'error' => $errorMsg
+                        ];
+                        continue;
+                    }
+
+                    // Ensure temp file is a real uploaded file
+                    if (!isset($file['tmp_name']) || !is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+                        $errors[] = [
+                            'filename' => $file['name'] ?? "file_$index",
+                            'error' => 'Invalid upload source'
+                        ];
+                        continue;
+                    }
+
+                    // Per-file size limit for this endpoint (images only)
+                    $maxImageMb = (int)($config['upload']['max_image_mb'] ?? 10);
+                    if ($maxImageMb > 0 && (int)($file['size'] ?? 0) > $maxImageMb * 1024 * 1024) {
+                        $errors[] = [
+                            'filename' => $file['name'] ?? "file_$index",
+                            'error' => "File too large. Max: {$maxImageMb}MB"
                         ];
                         continue;
                     }
@@ -255,12 +294,12 @@ class MediaController {
             // If no files were successfully uploaded, throw an exception
             if (empty($uploadedMedia)) {
                 if (!empty($errors)) {
-                    throw new \App\Exceptions\ValidationException(
+                    throw new ValidationException(
                         'All file uploads failed',
                         ['errors' => $errors]
                     );
                 } else {
-                    throw new \App\Exceptions\ValidationException('No valid files to upload');
+                    throw new ValidationException('No valid files to upload');
                 }
             }
 
@@ -282,12 +321,15 @@ class MediaController {
             // 在开发环境下返回详细错误信息
             $config = config();
             if ($config['app_env'] === 'development') {
-                ApiResponse::error([
-                    'message' => 'Media upload failed: ' . $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'type' => get_class($e)
-                ], 500);
+                ApiResponse::error(
+                    'Media upload failed: ' . $e->getMessage(),
+                    500,
+                    [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'type' => get_class($e)
+                    ]
+                );
             } else {
                 // 生产环境只返回通用错误
                 throw $e;

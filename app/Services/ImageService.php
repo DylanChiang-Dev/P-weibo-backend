@@ -7,6 +7,7 @@ use App\Exceptions\ValidationException;
 class ImageService {
     private string $uploadPath;
     private int $maxBytes;
+    private int $maxPixels = 80000000; // ~80MP, protects memory usage
 
     public function __construct(string $uploadPath, int $maxMb) {
         $this->uploadPath = rtrim($uploadPath, '/');
@@ -17,6 +18,9 @@ class ImageService {
     public function process(array $file): array {
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) throw new ValidationException('Upload error');
         if (($file['size'] ?? 0) > $this->maxBytes) throw new ValidationException('File too large');
+        if (!isset($file['tmp_name']) || !is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            throw new ValidationException('Invalid upload source');
+        }
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
         if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) throw new ValidationException('Invalid image format');
@@ -31,11 +35,27 @@ class ImageService {
         $mediumPath   = $this->uploadPath . '/' . $base . '_med.' . $ext;
         $thumbPath    = $this->uploadPath . '/' . $base . '_thumb.' . $ext;
 
+        $info = @getimagesize($file['tmp_name']);
+        if (is_array($info)) {
+            $w = (int)($info[0] ?? 0);
+            $h = (int)($info[1] ?? 0);
+            if ($w > 0 && $h > 0 && ($w * $h) > $this->maxPixels) {
+                throw new ValidationException('Image too large (resolution)');
+            }
+        }
+
         [$im, $w, $h] = $this->createImage($file['tmp_name'], $mime);
-        $this->saveImage($im, $mime, $originalPath);
-        // 生成中等與縮圖
-        $this->saveResized($im, $w, $h, 800, $mime, $mediumPath);
-        $this->saveResized($im, $w, $h, 200, $mime, $thumbPath);
+        try {
+            $this->saveImage($im, $mime, $originalPath);
+            // 生成中等與縮圖
+            $this->saveResized($im, $w, $h, 800, $mime, $mediumPath);
+            $this->saveResized($im, $w, $h, 200, $mime, $thumbPath);
+        } catch (\Throwable $e) {
+            @unlink($originalPath);
+            @unlink($mediumPath);
+            @unlink($thumbPath);
+            throw $e;
+        }
         imagedestroy($im);
         return [
             'original' => $originalPath,
@@ -58,10 +78,14 @@ class ImageService {
     }
 
     private function saveImage($im, string $mime, string $path): void {
+        $ok = true;
         switch ($mime) {
-            case 'image/jpeg': imagejpeg($im, $path, 90); break;
-            case 'image/png':  imagepng($im, $path); break;
-            case 'image/webp': imagewebp($im, $path, 90); break;
+            case 'image/jpeg': $ok = imagejpeg($im, $path, 90); break;
+            case 'image/png':  $ok = imagepng($im, $path); break;
+            case 'image/webp': $ok = imagewebp($im, $path, 90); break;
+        }
+        if (!$ok) {
+            throw new ValidationException('Failed to save image');
         }
         @chmod($path, 0644);
     }

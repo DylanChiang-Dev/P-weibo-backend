@@ -75,6 +75,12 @@ function config(): array {
             'max_mb' => (int)$get('MAX_UPLOAD_MB', 10), // Legacy, for backward compatibility
             'max_image_mb' => (int)$get('MAX_IMAGE_MB', 10),
             'max_video_mb' => (int)$get('MAX_VIDEO_MB', 100),
+            // Resource protection (safe defaults; override via .env if needed)
+            'max_files_per_request' => (int)$get('MAX_FILES_PER_REQUEST', 20),
+            'max_total_upload_mb' => (int)$get('MAX_TOTAL_UPLOAD_MB', 150),
+            'max_images_per_post' => (int)$get('MAX_IMAGES_PER_POST', 9),
+            'max_videos_per_post' => (int)$get('MAX_VIDEOS_PER_POST', 1),
+            'ffmpeg_timeout_seconds' => (int)$get('FFMPEG_TIMEOUT_SECONDS', 5),
         ],
         'log' => [
             'path' => $get('LOG_PATH', dirname(__DIR__) . '/logs'),

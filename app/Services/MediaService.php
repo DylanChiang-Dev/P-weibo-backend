@@ -7,6 +7,7 @@ use App\Exceptions\ValidationException;
 class MediaService {
     private string $uploadPath;
     private int $maxBytes;
+    private int $ffmpegTimeoutSeconds;
     private array $allowedMimeTypes = [
         'video/mp4',
         'video/webm',
@@ -14,9 +15,10 @@ class MediaService {
         'video/x-msvideo', // .avi
     ];
 
-    public function __construct(string $uploadPath, int $maxMb) {
+    public function __construct(string $uploadPath, int $maxMb, int $ffmpegTimeoutSeconds = 5) {
         $this->uploadPath = rtrim($uploadPath, '/');
         $this->maxBytes = $maxMb * 1024 * 1024;
+        $this->ffmpegTimeoutSeconds = max(1, $ffmpegTimeoutSeconds);
         if (!is_dir($this->uploadPath)) @mkdir($this->uploadPath, 0775, true);
     }
 
@@ -44,6 +46,10 @@ class MediaService {
                 'code' => $file['error']
             ]);
             throw new ValidationException('Upload error: ' . $errorMsg);
+        }
+
+        if (!isset($file['tmp_name']) || !is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            throw new ValidationException('Invalid upload source');
         }
 
         $fileSize = $file['size'] ?? 0;
@@ -121,22 +127,26 @@ class MediaService {
      * Extract video duration using FFmpeg (if available)
      */
     private function extractDuration(string $videoPath): ?int {
-        if (!function_exists('shell_exec')) {
+        if (!function_exists('proc_open')) {
             return null;
         }
 
         try {
-            $ffprobe = @shell_exec('which ffprobe 2>/dev/null');
+            $ffprobe = $this->findBinary('ffprobe');
             if (!$ffprobe) {
                 return null;
             }
 
-            $cmd = sprintf(
-                'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>/dev/null',
-                escapeshellarg($videoPath)
+            $output = $this->runCommand(
+                [
+                    $ffprobe,
+                    '-v', 'error',
+                    '-show_entries', 'format=duration',
+                    '-of', 'default=noprint_wrappers=1:nokey=1',
+                    $videoPath,
+                ],
+                $this->ffmpegTimeoutSeconds
             );
-            
-            $output = @shell_exec($cmd);
             if ($output && is_numeric(trim($output))) {
                 return (int)round((float)trim($output));
             }
@@ -151,13 +161,13 @@ class MediaService {
      * Generate video thumbnail using FFmpeg (if available)
      */
     private function generateThumbnail(string $videoPath, string $base): ?string {
-        if (!function_exists('shell_exec')) {
+        if (!function_exists('proc_open')) {
             return null;
         }
 
         try {
             // Check if FFmpeg is available
-            $ffmpeg = @shell_exec('which ffmpeg 2>/dev/null');
+            $ffmpeg = $this->findBinary('ffmpeg');
             if (!$ffmpeg) {
                 return null;
             }
@@ -165,22 +175,116 @@ class MediaService {
             $thumbnailPath = $this->uploadPath . '/' . $base . '_thumb.jpg';
             
             // Extract frame at 1 second (or 00:00:01)
-            $cmd = sprintf(
-                'ffmpeg -y -i %s -ss 00:00:01 -vframes 1 %s 2>/dev/null',
-                escapeshellarg($videoPath),
-                escapeshellarg($thumbnailPath)
+            $this->runCommand(
+                [
+                    $ffmpeg,
+                    '-y',
+                    '-i', $videoPath,
+                    '-ss', '00:00:01',
+                    '-vframes', '1',
+                    $thumbnailPath,
+                ],
+                $this->ffmpegTimeoutSeconds
             );
-            
-            @shell_exec($cmd);
             
             if (file_exists($thumbnailPath) && filesize($thumbnailPath) > 0) {
                 return $thumbnailPath;
+            }
+            if (file_exists($thumbnailPath)) {
+                @unlink($thumbnailPath);
             }
         } catch (\Throwable $e) {
             Logger::warn('ffmpeg_thumbnail_failed', ['error' => $e->getMessage()]);
         }
 
         return null;
+    }
+
+    private function findBinary(string $name): ?string {
+        if (!function_exists('proc_open')) {
+            return null;
+        }
+
+        $out = $this->runCommand(['which', $name], 1);
+        $path = $out ? trim($out) : '';
+        return $path !== '' ? $path : null;
+    }
+
+    private function runCommand(array $cmd, int $timeoutSeconds): ?string {
+        $descriptors = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = @proc_open($cmd, $descriptors, $pipes);
+        if (!is_resource($process)) {
+            return null;
+        }
+
+        $start = microtime(true);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $stdout = '';
+        $stderr = '';
+        $maxBytes = 1024 * 1024; // 1MB output cap
+
+        try {
+            while (true) {
+                $status = proc_get_status($process);
+                if (!is_array($status) || !($status['running'] ?? false)) {
+                    break;
+                }
+
+                $elapsed = microtime(true) - $start;
+                if ($elapsed > $timeoutSeconds) {
+                    @proc_terminate($process, 9);
+                    Logger::warn('command_timeout', ['cmd' => $cmd[0] ?? 'unknown', 'timeout' => $timeoutSeconds]);
+                    return null;
+                }
+
+                $read = [$pipes[1], $pipes[2]];
+                $write = null;
+                $except = null;
+                @stream_select($read, $write, $except, 0, 200000);
+
+                foreach ($read as $r) {
+                    $chunk = @fread($r, 8192);
+                    if ($chunk === false || $chunk === '') {
+                        continue;
+                    }
+                    if ($r === $pipes[1]) {
+                        $stdout .= $chunk;
+                        if (strlen($stdout) > $maxBytes) {
+                            $stdout = substr($stdout, 0, $maxBytes);
+                        }
+                    } else {
+                        $stderr .= $chunk;
+                        if (strlen($stderr) > $maxBytes) {
+                            $stderr = substr($stderr, 0, $maxBytes);
+                        }
+                    }
+                }
+            }
+
+            // Drain remaining output
+            $stdout .= (string)@stream_get_contents($pipes[1]);
+            $stderr .= (string)@stream_get_contents($pipes[2]);
+        } finally {
+            foreach ($pipes as $p) {
+                if (is_resource($p)) {
+                    fclose($p);
+                }
+            }
+            @proc_close($process);
+        }
+
+        if ($stderr !== '') {
+            // Don't throw; just provide signal for debugging.
+            Logger::info('command_stderr', ['cmd' => $cmd[0] ?? 'unknown', 'stderr' => substr($stderr, 0, 2000)]);
+        }
+
+        return $stdout;
     }
 
     /**

@@ -18,14 +18,74 @@ use App\Exceptions\ValidationException;
 class PostService {
     private ImageService $imageService;
     private MediaService $mediaService;
+    private int $maxImagesPerPost;
+    private int $maxVideosPerPost;
+    private int $maxTotalUploadBytes;
+    private int $maxFilesPerRequest;
 
     public function __construct(array $uploadConfig) {
         $this->imageService = new ImageService($uploadConfig['path'], $uploadConfig['max_image_mb'] ?? $uploadConfig['max_mb']);
-        $this->mediaService = new MediaService($uploadConfig['path'], $uploadConfig['max_video_mb'] ?? 100);
+        $this->mediaService = new MediaService(
+            $uploadConfig['path'],
+            $uploadConfig['max_video_mb'] ?? 100,
+            (int)($uploadConfig['ffmpeg_timeout_seconds'] ?? 5)
+        );
+
+        $this->maxImagesPerPost = (int)($uploadConfig['max_images_per_post'] ?? 9);
+        $this->maxVideosPerPost = (int)($uploadConfig['max_videos_per_post'] ?? 1);
+        $this->maxTotalUploadBytes = (int)($uploadConfig['max_total_upload_mb'] ?? 150) * 1024 * 1024;
+        $this->maxFilesPerRequest = (int)($uploadConfig['max_files_per_request'] ?? 20);
+    }
+
+    private function countFiles(array $files): int {
+        if (empty($files) || !isset($files['name'])) {
+            return 0;
+        }
+        return is_array($files['name']) ? count($files['name']) : 1;
+    }
+
+    private function sumSizes(array $files): int {
+        if (empty($files) || !isset($files['size'])) {
+            return 0;
+        }
+        if (is_array($files['size'])) {
+            $sum = 0;
+            foreach ($files['size'] as $s) {
+                $sum += (int)$s;
+            }
+            return $sum;
+        }
+        return (int)$files['size'];
+    }
+
+    private function enforcePostUploadLimits(array $imageFiles, array $videoFiles): void {
+        $imageCount = $this->countFiles($imageFiles);
+        $videoCount = $this->countFiles($videoFiles);
+
+        if ($this->maxImagesPerPost > 0 && $imageCount > $this->maxImagesPerPost) {
+            throw new ValidationException("Too many images. Max: {$this->maxImagesPerPost}");
+        }
+
+        if ($this->maxVideosPerPost > 0 && $videoCount > $this->maxVideosPerPost) {
+            throw new ValidationException("Too many videos. Max: {$this->maxVideosPerPost}");
+        }
+
+        if ($this->maxFilesPerRequest > 0 && ($imageCount + $videoCount) > $this->maxFilesPerRequest) {
+            throw new ValidationException("Too many files. Max: {$this->maxFilesPerRequest}");
+        }
+
+        if ($this->maxTotalUploadBytes > 0) {
+            $totalBytes = $this->sumSizes($imageFiles) + $this->sumSizes($videoFiles);
+            if ($totalBytes > $this->maxTotalUploadBytes) {
+                $mb = (int)round($this->maxTotalUploadBytes / 1024 / 1024);
+                throw new ValidationException("Total upload too large. Max: {$mb}MB");
+            }
+        }
     }
 
     public function createPost(int $userId, string $content, string $visibility = 'public', array $imageFiles = [], array $videoFiles = []): int {
         try {
+            $this->enforcePostUploadLimits($imageFiles, $videoFiles);
             Database::begin();
             $postId = Post::create($userId, $content, $visibility);
 
@@ -222,6 +282,7 @@ class PostService {
         }
 
         try {
+            $this->enforcePostUploadLimits($imageFiles, $videoFiles);
             Database::begin();
 
             // Update text content and time
