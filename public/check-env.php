@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 // Quick .env checker
 $root = dirname(__DIR__);
 $envPath = $root . '/.env';

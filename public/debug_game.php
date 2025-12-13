@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 診斷 Games API 問題的臨時腳本
  */

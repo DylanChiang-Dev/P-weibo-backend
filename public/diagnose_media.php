@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * Media API 诊断脚本
  * 检查上传功能所需的所有条件

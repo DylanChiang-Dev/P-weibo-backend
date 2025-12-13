@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * Media API 安装和诊断工具
  * 

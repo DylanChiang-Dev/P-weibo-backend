@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * Diagnostic Test Page
  * This page will help identify what's causing the 500 error

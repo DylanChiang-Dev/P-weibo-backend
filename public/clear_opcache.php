@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 强制清除 OPcache 并验证代码
  */

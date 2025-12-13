@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 强制测试 - 直接在 API 端点开头写入日志
  * 这会告诉我们请求是否到达 PHP

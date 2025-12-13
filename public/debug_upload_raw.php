@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 终极调试 - 直接查看视频上传的原始数据
  * 访问: https://pyqapi.3331322.xyz/debug_upload_raw.php

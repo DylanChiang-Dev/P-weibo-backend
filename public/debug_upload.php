@@ -1,4 +1,5 @@
-&lt;?php
+<?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 调试上传问题
 File 专门用于诊断为什么files[]上传后items为空

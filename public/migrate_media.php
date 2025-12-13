@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 数据迁移脚本：将现有的 post_images 迁移到 media 表
  * 执行方式：直接在浏览器访问此文件

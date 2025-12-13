@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * OPTIONS Request Test
  * This endpoint specifically tests OPTIONS preflight handling

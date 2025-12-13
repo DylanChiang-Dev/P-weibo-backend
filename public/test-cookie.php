@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * Test Cookie Setting
  * This endpoint tests if cookies are being set correctly

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 简单的媒体上传测试
  * 不需要认证，仅用于测试上传功能是否正常

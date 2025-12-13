@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 診斷 Podcast API 問題的臨時腳本
  * 用法: https://你的域名/debug_podcast.php?action=test

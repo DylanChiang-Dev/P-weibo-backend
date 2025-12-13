@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * Fix CORS Configuration Script
  * Updates .env FRONTEND_ORIGIN to allow the frontend domain

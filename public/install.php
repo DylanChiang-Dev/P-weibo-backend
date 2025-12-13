@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * P-Weibo Backend Installation Script
  * This script handles the installation process including:

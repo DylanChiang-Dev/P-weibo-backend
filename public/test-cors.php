@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * CORS Configuration Test Tool
  * This script helps diagnose CORS issues

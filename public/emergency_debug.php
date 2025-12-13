@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_tool_guard.php';
 /**
  * 紧急调试脚本 - 直接测试视频上传逻辑
  * 绕过所有缓存和中间层
