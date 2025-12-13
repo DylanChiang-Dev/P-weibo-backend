@@ -10,6 +10,10 @@ use App\Core\Database;
 use App\Core\Logger;
 use App\Services\ImageService;
 use App\Services\MediaService;
+use App\Exceptions\ForbiddenException;
+use App\Exceptions\InternalServerErrorException;
+use App\Exceptions\NotFoundException;
+use App\Exceptions\ValidationException;
 
 class PostService {
     private ImageService $imageService;
@@ -111,7 +115,7 @@ class PostService {
         } catch (\Throwable $e) {
             Database::rollback();
             Logger::error('post_create_failed', ['error' => $e->getMessage()]);
-            throw new \RuntimeException('Internal Server Error', 500);
+            throw new InternalServerErrorException();
         }
     }
 
@@ -156,8 +160,8 @@ class PostService {
     }
 
     public function commentPost(?int $userId, int $postId, string $content, ?string $authorName = null): int {
-        if (empty(trim($content))) throw new \InvalidArgumentException('Empty comment');
-        if (!$userId && empty($authorName)) throw new \InvalidArgumentException('Author name required for guests');
+        if (empty(trim($content))) throw new ValidationException('Empty comment');
+        if (!$userId && empty($authorName)) throw new ValidationException('Author name required for guests');
         
         return Comment::add($userId, $postId, $content, $authorName);
     }
@@ -165,10 +169,10 @@ class PostService {
     public function deletePost(int $userId, int $postId): void {
         $post = Post::getById($postId);
         if (!$post) {
-            throw new \RuntimeException('Post not found');
+            throw new NotFoundException('Post not found');
         }
         if ((int)$post['user_id'] !== $userId) {
-            throw new \RuntimeException('Forbidden');
+            throw new ForbiddenException();
         }
         Post::softDelete($postId);
     }
@@ -176,11 +180,11 @@ class PostService {
     public function pinPost(int $userId, int $postId): void {
         $post = Post::getById($postId);
         if (!$post) {
-            throw new \RuntimeException('Post not found', 404);
+            throw new NotFoundException('Post not found');
         }
         // Only the post owner can pin (in single-user system, this is the admin)
         if ((int)$post['user_id'] !== $userId) {
-            throw new \RuntimeException('Forbidden', 403);
+            throw new ForbiddenException();
         }
         Post::pin($postId);
     }
@@ -188,11 +192,11 @@ class PostService {
     public function unpinPost(int $userId, int $postId): void {
         $post = Post::getById($postId);
         if (!$post) {
-            throw new \RuntimeException('Post not found', 404);
+            throw new NotFoundException('Post not found');
         }
         // Only the post owner can unpin (in single-user system, this is the admin)
         if ((int)$post['user_id'] !== $userId) {
-            throw new \RuntimeException('Forbidden', 403);
+            throw new ForbiddenException();
         }
         Post::unpin($postId);
     }
@@ -210,11 +214,11 @@ class PostService {
     ): array {
         $post = Post::getById($postId);
         if (!$post) {
-            throw new \RuntimeException('Post not found', 404);
+            throw new NotFoundException('Post not found');
         }
         // Only the post owner can update
         if ((int)$post['user_id'] !== $userId) {
-            throw new \RuntimeException('Forbidden', 403);
+            throw new ForbiddenException();
         }
 
         try {
@@ -231,7 +235,7 @@ class PostService {
                 // Validate ISO 8601 date format
                 $timestamp = strtotime($createdAt);
                 if ($timestamp === false) {
-                    throw new \InvalidArgumentException('Invalid date format. Use ISO 8601 format (e.g., 2023-12-25T10:00:00Z)');
+                    throw new ValidationException('Invalid date format. Use ISO 8601 format (e.g., 2023-12-25T10:00:00Z)');
                 }
                 // Convert to MySQL datetime format
                 $updateData['created_at'] = date('Y-m-d H:i:s', $timestamp);

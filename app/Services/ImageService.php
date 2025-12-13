@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Core\Logger;
+use App\Exceptions\ValidationException;
 
 class ImageService {
     private string $uploadPath;
@@ -14,11 +15,11 @@ class ImageService {
     }
 
     public function process(array $file): array {
-        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) throw new \RuntimeException('Upload error');
-        if (($file['size'] ?? 0) > $this->maxBytes) throw new \RuntimeException('File too large');
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) throw new ValidationException('Upload error');
+        if (($file['size'] ?? 0) > $this->maxBytes) throw new ValidationException('File too large');
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
-        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) throw new \RuntimeException('Invalid MIME');
+        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) throw new ValidationException('Invalid image format');
         $ext = match ($mime) {
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -50,9 +51,9 @@ class ImageService {
             case 'image/jpeg': $im = @imagecreatefromjpeg($tmp); break;
             case 'image/png':  $im = @imagecreatefrompng($tmp); break;
             case 'image/webp': $im = @imagecreatefromwebp($tmp); break;
-            default: throw new \RuntimeException('Unsupported');
+            default: throw new ValidationException('Unsupported image format');
         }
-        if (!$im) throw new \RuntimeException('Image decode failed');
+        if (!$im) throw new ValidationException('Image decode failed');
         return [$im, imagesx($im), imagesy($im)];
     }
 

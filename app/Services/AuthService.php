@@ -3,12 +3,15 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Core\Logger;
+use App\Exceptions\ConflictException;
+use App\Exceptions\InternalServerErrorException;
+use App\Exceptions\UnauthorizedException;
 
 class AuthService {
     public function register(string $email, string $password): array {
         $exists = User::findByEmail($email);
         if ($exists) {
-            throw new \RuntimeException('Email already registered', 409);
+            throw new ConflictException('Email already registered');
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -16,7 +19,7 @@ class AuthService {
             $id = User::create($email, $hash);
         } catch (\Throwable $e) {
             Logger::error('register_failed', ['message' => $e->getMessage()]);
-            throw new \RuntimeException('Internal Server Error', 500);
+            throw new InternalServerErrorException();
         }
 
         return ['id' => $id, 'email' => $email];
@@ -26,7 +29,7 @@ class AuthService {
         $user = User::findByEmail($email);
         if (!$user || !password_verify($password, $user['password_hash'])) {
             Logger::warn('login_failed', ['email' => $email]);
-            throw new \RuntimeException('Invalid credentials', 401);
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         return TokenService::issueTokens((int)$user['id'], $ua, $ip);

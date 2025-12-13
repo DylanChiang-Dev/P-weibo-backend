@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Core\Logger;
+use App\Exceptions\ValidationException;
 
 class MediaService {
     private string $uploadPath;
@@ -24,7 +25,7 @@ class MediaService {
      * 
      * @param array $file Uploaded file array from $_FILES
      * @return array ['file_path', 'thumbnail_path', 'duration', 'file_size', 'mime_type']
-     * @throws \RuntimeException on validation or processing errors
+     * @throws ValidationException on validation errors
      */
     public function process(array $file): array {
         Logger::info('media_service_process_start', [
@@ -42,7 +43,7 @@ class MediaService {
                 'error' => $errorMsg,
                 'code' => $file['error']
             ]);
-            throw new \RuntimeException('Upload error: ' . $errorMsg);
+            throw new ValidationException('Upload error: ' . $errorMsg);
         }
 
         $fileSize = $file['size'] ?? 0;
@@ -51,7 +52,7 @@ class MediaService {
                 'size' => $fileSize,
                 'max' => $this->maxBytes
             ]);
-            throw new \RuntimeException('File too large. Max: ' . ($this->maxBytes / 1024 / 1024) . 'MB');
+            throw new ValidationException('File too large. Max: ' . ($this->maxBytes / 1024 / 1024) . 'MB');
         }
 
         // Validate MIME type
@@ -68,7 +69,7 @@ class MediaService {
                 'mime' => $mime,
                 'allowed' => $this->allowedMimeTypes
             ]);
-            throw new \RuntimeException('Invalid video format. Allowed: MP4, WebM, MOV, AVI');
+            throw new ValidationException('Invalid video format. Allowed: MP4, WebM, MOV, AVI');
         }
 
         // Generate unique filename
@@ -92,7 +93,7 @@ class MediaService {
                 'dir_writable' => is_writable($this->uploadPath),
                 'dir_exists' => is_dir($this->uploadPath)
             ]);
-            throw new \RuntimeException('Failed to save video file');
+            throw new ValidationException('Failed to save video file');
         }
 
         @chmod($videoPath, 0644);

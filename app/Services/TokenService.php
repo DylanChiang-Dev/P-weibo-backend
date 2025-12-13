@@ -5,6 +5,7 @@ use App\Core\Auth;
 use App\Core\Response;
 use App\Core\Logger;
 use App\Models\RefreshToken;
+use App\Exceptions\UnauthorizedException;
 
 class TokenService {
     private static array $jwt;
@@ -43,7 +44,7 @@ class TokenService {
             } else {
                 Logger::warn('refresh_invalid', []);
             }
-            throw new \RuntimeException('Invalid refresh token', 401);
+            throw new UnauthorizedException('Invalid refresh token');
         }
         // rotation：撤銷舊 token，產新 token
         RefreshToken::revokeByHash($hash);

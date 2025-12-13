@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Core\QueryBuilder;
+use App\Exceptions\NotFoundException;
 
 class UserService {
     public function getProfile(string $email): ?array {
@@ -30,7 +31,7 @@ class UserService {
     public function updateProfile(int $userId, ?string $displayName, ?array $avatarFile): array {
         $user = User::findById($userId);
         if (!$user) {
-            throw new \RuntimeException('User not found', 404);
+            throw new NotFoundException('User not found');
         }
 
         $updateData = [];
