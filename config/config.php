@@ -88,6 +88,10 @@ function config(): array {
             'timeout' => (float)$get('REDIS_TIMEOUT', 0.2),
             'persistent' => $getBool('REDIS_PERSISTENT', true),
         ],
+        'integrations' => [
+            // Recommended: base64-encoded 32 bytes. If unset, derives from JWT secrets (compatible with existing deployments).
+            'enc_key' => $get('INTEGRATIONS_ENC_KEY', ''),
+        ],
         'db' => [
             'host' => $get('DB_HOST', '127.0.0.1'),
             'port' => (int)$get('DB_PORT', 3306),

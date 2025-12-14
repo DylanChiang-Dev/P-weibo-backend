@@ -41,3 +41,8 @@
 2. Move internal tools to `scripts/` (CLI-only) to reduce accidental exposure.
 3. Gradually replace ad-hoc `RuntimeException(code)` with typed `AppException` subclasses for clearer error handling.
 
+## Integrations (Third-Party Keys)
+
+- Credentials are stored per-user in MySQL (`user_integrations.credentials_enc`) encrypted via AES-256-GCM.
+- The encryption key can be provided via `.env` (`INTEGRATIONS_ENC_KEY` base64 32 bytes). If unset, it derives from existing JWT secrets for zero-config deployments.
+- IGDB uses Twitch client-credentials flow; access token is cached in Redis (or file cache fallback) and auto-refreshed on 401.

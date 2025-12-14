@@ -56,6 +56,8 @@ use App\Controllers\MediaController;
 use App\Controllers\ActivityController;
 use App\Controllers\MediaLibraryController;
 use App\Controllers\UserSettingsController;
+use App\Controllers\IntegrationController;
+use App\Controllers\SearchController;
 use App\Middleware\AdminMiddleware;
 use App\Middleware\OptionalAuthMiddleware;
 
@@ -209,6 +211,16 @@ $router->post('/api/users/me', [UserController::class, 'updateMe'], ['auth' => t
 // User Settings (API Keys)
 $router->get('/api/user/settings', [UserSettingsController::class, 'getSettings'], ['auth' => true]);
 $router->post('/api/user/settings', [UserSettingsController::class, 'saveSettings'], ['auth' => true]);
+
+// Integrations (third-party API keys stored server-side)
+$router->get('/api/integrations/status', [IntegrationController::class, 'status'], ['auth' => true]);
+$router->post('/api/integrations/credentials', [IntegrationController::class, 'save'], ['auth' => true]);
+
+// Search proxies (server-side keys + IGDB token rotation)
+$router->get('/api/search/tmdb', [SearchController::class, 'tmdb'], ['auth' => true]);
+$router->get('/api/search/rawg', [SearchController::class, 'rawg'], ['auth' => true]);
+$router->get('/api/search/google-books', [SearchController::class, 'googleBooks'], ['auth' => true]);
+$router->get('/api/search/igdb', [SearchController::class, 'igdb'], ['auth' => true]);
 
 // 執行
     $router->dispatch();
