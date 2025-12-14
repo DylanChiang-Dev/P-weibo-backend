@@ -21,6 +21,19 @@ class MediaLibraryController {
     private function getUserId(Request $req): int {
         return isset($req->user) ? (int)$req->user['id'] : 1;
     }
+
+    /**
+     * Parse and clamp pagination limit.
+     * - Default stays the same (typically 20)
+     * - Public (unauthenticated) requests keep a conservative cap
+     * - Authenticated requests (admin/personal library) allow larger batches
+     */
+    private function getLimit(Request $req, int $default = 20): int {
+        $raw = isset($req->query['limit']) ? (int)$req->query['limit'] : $default;
+        $limit = max(1, $raw);
+        $max = isset($req->user) ? 1000 : 100;
+        return min($limit, $max);
+    }
     
     /**
      * Format date string to MySQL DATE format (YYYY-MM-DD)
@@ -46,7 +59,7 @@ class MediaLibraryController {
     public function listMovies(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -182,7 +195,7 @@ class MediaLibraryController {
     public function listTvShows(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -320,7 +333,7 @@ class MediaLibraryController {
     public function listBooks(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -414,7 +427,7 @@ class MediaLibraryController {
     public function listGames(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -537,7 +550,7 @@ class MediaLibraryController {
     public function listPodcasts(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -645,7 +658,7 @@ class MediaLibraryController {
     public function listDocumentaries(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
@@ -744,7 +757,7 @@ class MediaLibraryController {
     public function listAnime(Request $req): void {
         $userId = $this->getUserId($req);
         $status = $req->query['status'] ?? null;
-        $limit = min((int)($req->query['limit'] ?? 20), 100);
+        $limit = $this->getLimit($req, 20);
         $page = max(1, (int)($req->query['page'] ?? 1));
         $offset = ($page - 1) * $limit;
         $search = $req->query['search'] ?? null;
