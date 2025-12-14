@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Core\RedisClient;
+
 class RateLimitService {
     private string $dir;
     private int $max;
@@ -11,18 +13,73 @@ class RateLimitService {
      * Stores counters in sys temp dir to avoid requiring app config wiring.
      */
     public static function attempt(string $key, int $maxAttempts = 60, int $decayMinutes = 1): bool {
-        $dir = rtrim(sys_get_temp_dir(), '/') . '/pweibo_ratelimit';
+        $windowSeconds = max(1, $decayMinutes) * 60;
+        $redis = RedisClient::get();
+        if ($redis) {
+            $res = self::attemptRedis($redis, $key, $maxAttempts, $windowSeconds);
+            if ($res !== null) {
+                return $res;
+            }
+        }
+
+        return self::attemptFile(sys_get_temp_dir() . '/pweibo_ratelimit', $key, $maxAttempts, $windowSeconds);
+    }
+
+    public function __construct(string $dir, int $max, int $windowSeconds) {
+        $this->dir = rtrim($dir, '/');
+        $this->max = $max;
+        $this->window = $windowSeconds;
+        if (!is_dir($this->dir)) @mkdir($this->dir, 0775, true);
+    }
+
+    public function check(string $key): bool {
+        // Prefer Redis if enabled/available; fall back to legacy file-based limiter.
+        $redis = RedisClient::get();
+        if ($redis) {
+            $res = self::attemptRedis($redis, 'legacy:' . $key, $this->max, $this->window);
+            if ($res !== null) {
+                return $res;
+            }
+        }
+
+        $file = $this->dir . '/' . md5($key) . '.cache';
+        $now = time();
+        $data = ['start' => $now, 'count' => 0];
+        if (file_exists($file)) {
+            $content = file_get_contents($file);
+            if ($content) $data = json_decode($content, true) ?: $data;
+        }
+        if ($now - ($data['start'] ?? $now) > $this->window) {
+            $data['start'] = $now;
+            $data['count'] = 0;
+        }
+        $data['count']++;
+        file_put_contents($file, json_encode($data));
+        return $data['count'] <= $this->max;
+    }
+
+    private static function attemptRedis(\Redis $redis, string $key, int $maxAttempts, int $windowSeconds): ?bool {
+        $redisKey = RedisClient::prefix() . 'ratelimit:' . $key;
+        try {
+            $script = 'local current = redis.call("INCR", KEYS[1]); if current == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]); end; return current;';
+            $count = $redis->eval($script, [$redisKey, (int)$windowSeconds], 1);
+            return (int)$count <= $maxAttempts;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private static function attemptFile(string $dir, string $key, int $maxAttempts, int $windowSeconds): bool {
+        $dir = rtrim($dir, '/');
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
         $file = $dir . '/' . md5($key) . '.json';
         $now = time();
-        $windowSeconds = max(1, $decayMinutes) * 60;
 
         $fh = @fopen($file, 'c+');
         if ($fh === false) {
-            // Fail-open to avoid taking down the request path if filesystem is unavailable.
             return true;
         }
 
@@ -50,30 +107,6 @@ class RateLimitService {
         }
 
         return (int)$data['count'] <= $maxAttempts;
-    }
-
-    public function __construct(string $dir, int $max, int $windowSeconds) {
-        $this->dir = rtrim($dir, '/');
-        $this->max = $max;
-        $this->window = $windowSeconds;
-        if (!is_dir($this->dir)) @mkdir($this->dir, 0775, true);
-    }
-
-    public function check(string $key): bool {
-        $file = $this->dir . '/' . md5($key) . '.cache';
-        $now = time();
-        $data = ['start' => $now, 'count' => 0];
-        if (file_exists($file)) {
-            $content = file_get_contents($file);
-            if ($content) $data = json_decode($content, true) ?: $data;
-        }
-        if ($now - ($data['start'] ?? $now) > $this->window) {
-            $data['start'] = $now;
-            $data['count'] = 0;
-        }
-        $data['count']++;
-        file_put_contents($file, json_encode($data));
-        return $data['count'] <= $this->max;
     }
 }
 ?>

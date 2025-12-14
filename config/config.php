@@ -63,6 +63,17 @@ function config(): array {
             'samesite' => $get('COOKIE_SAMESITE', 'None'),
             'secure' => (bool)(($get('COOKIE_SECURE')) ?? ($get('APP_ENV', 'development') !== 'development')),
         ],
+        'redis' => [
+            'enabled' => (bool)$get('REDIS_ENABLED', false),
+            'host' => $get('REDIS_HOST', '127.0.0.1'),
+            'port' => (int)$get('REDIS_PORT', 6379),
+            'password' => $get('REDIS_PASSWORD', ''),
+            'db' => (int)$get('REDIS_DB', 0),
+            'prefix' => $get('REDIS_PREFIX', 'pweibo:'),
+            // Short timeouts to avoid hanging request path
+            'timeout' => (float)$get('REDIS_TIMEOUT', 0.2),
+            'persistent' => (bool)$get('REDIS_PERSISTENT', true),
+        ],
         'db' => [
             'host' => $get('DB_HOST', '127.0.0.1'),
             'port' => (int)$get('DB_PORT', 3306),
