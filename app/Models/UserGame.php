@@ -1,13 +1,35 @@
 <?php
 namespace App\Models;
 
+use App\Core\Database;
 use App\Core\QueryBuilder;
 
 class UserGame {
+    private static bool $schemaChecked = false;
+
+    private static function ensureSchema(): void {
+        if (self::$schemaChecked) return;
+        self::$schemaChecked = true;
+
+        try {
+            // Fast path: column exists
+            Database::query('SELECT title_zh FROM user_games LIMIT 1');
+        } catch (\PDOException $e) {
+            // Unknown column (MySQL: 42S22) or missing table (42S02)
+            $code = (string)($e->getCode() ?? '');
+            if ($code === '42S22') {
+                Database::execute('ALTER TABLE user_games ADD COLUMN title_zh VARCHAR(255) NULL AFTER name');
+                return;
+            }
+            throw $e;
+        }
+    }
+
     /**
      * Create a new game record
      */
     public static function create(array $data): int {
+        self::ensureSchema();
         return QueryBuilder::table('user_games')->insert($data);
     }
     
@@ -15,6 +37,7 @@ class UserGame {
      * Get game by ID
      */
     public static function getById(int $id): ?array {
+        self::ensureSchema();
         return QueryBuilder::table('user_games')
             ->where('id', '=', $id)
             ->first();
@@ -24,6 +47,7 @@ class UserGame {
      * List games for a user with search and sort support
      */
     public static function list(int $userId, ?string $status = null, int $limit = 20, int $offset = 0, ?string $search = null, string $sort = 'date_desc'): array {
+        self::ensureSchema();
         $query = QueryBuilder::table('user_games')
             ->where('user_id', '=', $userId);
         
@@ -82,6 +106,7 @@ class UserGame {
      * Count total games for a user
      */
     public static function count(int $userId, ?string $status = null, ?string $search = null): int {
+        self::ensureSchema();
         $query = QueryBuilder::table('user_games')
             ->where('user_id', '=', $userId);
         
@@ -102,6 +127,7 @@ class UserGame {
      * Update game record
      */
     public static function update(int $id, array $data): void {
+        self::ensureSchema();
         QueryBuilder::table('user_games')
             ->where('id', '=', $id)
             ->update($data);
@@ -111,6 +137,7 @@ class UserGame {
      * Delete game record
      */
     public static function delete(int $id): void {
+        self::ensureSchema();
         QueryBuilder::table('user_games')
             ->where('id', '=', $id)
             ->delete();
@@ -120,6 +147,7 @@ class UserGame {
      * Check if user already has this game by RAWG ID
      */
     public static function exists(int $userId, int $rawgId): bool {
+        self::ensureSchema();
         $result = QueryBuilder::table('user_games')
             ->where('user_id', '=', $userId)
             ->where('rawg_id', '=', $rawgId)
@@ -132,6 +160,7 @@ class UserGame {
      * Check if user already has this game by IGDB ID
      */
     public static function existsByIgdbId(int $userId, int $igdbId): bool {
+        self::ensureSchema();
         $result = QueryBuilder::table('user_games')
             ->where('user_id', '=', $userId)
             ->where('igdb_id', '=', $igdbId)

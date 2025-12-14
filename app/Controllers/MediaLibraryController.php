@@ -147,6 +147,9 @@ class MediaLibraryController {
             if (isset($data[$field])) {
                 if (in_array($field, $jsonFields) && is_array($data[$field])) {
                     $updateData[$field] = json_encode($data[$field]);
+                } elseif ($field === 'title_zh') {
+                    $val = trim((string)$data[$field]);
+                    $updateData[$field] = $val === '' ? null : $val;
                 } else {
                     $updateData[$field] = $data[$field];
                 }
@@ -454,6 +457,7 @@ class MediaLibraryController {
             'igdb_id' => $igdbId,
             // Metadata fields
             'name' => $data['name'] ?? $data['title'] ?? null,
+            'title_zh' => isset($data['title_zh']) ? trim((string)$data['title_zh']) : null,
             'cover_image_cdn' => $data['cover_image_cdn'] ?? $data['cover_url'] ?? null,
             'overview' => $data['overview'] ?? null,
             'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
@@ -491,7 +495,7 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
         $allowedFields = [
-            'name', 'cover_image_cdn', 'cover_image_local',
+            'name', 'title_zh', 'cover_image_cdn', 'cover_image_local',
             'overview', 'genres', 'external_rating', 'backdrop_image_cdn', 'backdrop_image_local',
             'platforms', 'developers', 'publishers', 'game_modes',
             'igdb_id', 'my_rating', 'my_review', 'playtime_hours', 'platform', 'status', 'completed_date'
