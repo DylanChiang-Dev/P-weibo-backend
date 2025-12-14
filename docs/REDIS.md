@@ -6,10 +6,12 @@ This backend can optionally use Redis (if the PHP `redis` extension is installed
 
 ## Enable
 
-Set these in `.env` and restart PHP-FPM:
+Redis is enabled by default when `APP_ENV=production`.
+
+To explicitly enable/override (or to disable), set these in `.env` and restart PHP-FPM:
 
 ```bash
-REDIS_ENABLED=1
+REDIS_ENABLED=1   # set to 0 to disable
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
@@ -23,4 +25,3 @@ REDIS_PERSISTENT=1
 
 - If Redis is not reachable or the PHP extension is missing, the code falls back automatically.
 - Cross-process correctness is better with Redis than file-based counters.
-

@@ -34,6 +34,19 @@ function config(): array {
         return $env[$key] ?? $default;
     };
 
+    $getBool = function (string $key, bool $default = false) use ($env): bool {
+        if (!array_key_exists($key, $env)) {
+            return $default;
+        }
+        $raw = strtolower(trim((string)$env[$key]));
+        if ($raw === '' ) return $default;
+        if (in_array($raw, ['1', 'true', 'yes', 'y', 'on'], true)) return true;
+        if (in_array($raw, ['0', 'false', 'no', 'n', 'off'], true)) return false;
+        return $default;
+    };
+
+    $appEnv = $get('APP_ENV', 'development');
+
     $frontendOriginRaw = $get('FRONTEND_ORIGIN', 'http://localhost:3000');
     $frontendOrigins = array_values(array_filter(array_map('trim', explode(',', $frontendOriginRaw)), fn ($v) => $v !== ''));
 
@@ -53,7 +66,7 @@ function config(): array {
     }
 
     $config = [
-        'app_env' => $get('APP_ENV', 'development'),
+        'app_env' => $appEnv,
         'app_url' => $get('APP_URL', 'http://localhost'),
         'frontend_origin' => implode(',', $frontendOrigins),
         'cookie' => [
@@ -61,10 +74,11 @@ function config(): array {
             'domain' => $get('COOKIE_DOMAIN', ''),
             // For cross-site XHR (e.g. pages.dev), this must be None + Secure.
             'samesite' => $get('COOKIE_SAMESITE', 'None'),
-            'secure' => (bool)(($get('COOKIE_SECURE')) ?? ($get('APP_ENV', 'development') !== 'development')),
+            'secure' => $getBool('COOKIE_SECURE', $appEnv !== 'development'),
         ],
         'redis' => [
-            'enabled' => (bool)$get('REDIS_ENABLED', false),
+            // If not explicitly set in .env, default to enabled in production.
+            'enabled' => $getBool('REDIS_ENABLED', $appEnv === 'production'),
             'host' => $get('REDIS_HOST', '127.0.0.1'),
             'port' => (int)$get('REDIS_PORT', 6379),
             'password' => $get('REDIS_PASSWORD', ''),
@@ -72,7 +86,7 @@ function config(): array {
             'prefix' => $get('REDIS_PREFIX', 'pweibo:'),
             // Short timeouts to avoid hanging request path
             'timeout' => (float)$get('REDIS_TIMEOUT', 0.2),
-            'persistent' => (bool)$get('REDIS_PERSISTENT', true),
+            'persistent' => $getBool('REDIS_PERSISTENT', true),
         ],
         'db' => [
             'host' => $get('DB_HOST', '127.0.0.1'),
