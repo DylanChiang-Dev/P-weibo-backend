@@ -42,6 +42,7 @@ use App\Core\Logger;
 use App\Core\Database;
 use App\Core\Auth;
 use App\Core\ExceptionHandler;
+use App\Core\MigrationRunner;
 use App\Middleware\CorsMiddleware;
 use App\Services\TokenService;
 use App\Controllers\AuthController;
@@ -71,6 +72,14 @@ $cors->handle($request, fn ($req) => null);
 try {
     Logger::init($config['log']['path']);
     Database::init($config['db']);
+
+    // Optional: auto-apply pending migrations on deploy.
+    if (($config['migrations']['auto'] ?? false) && $request->method !== 'OPTIONS') {
+        MigrationRunner::run($root . '/migrations', [
+            'tolerate_existing' => (bool)($config['migrations']['tolerate_existing'] ?? false),
+        ]);
+    }
+
     Auth::init($config['jwt'], $config['app_url']);
     TokenService::init($config['jwt']);
 

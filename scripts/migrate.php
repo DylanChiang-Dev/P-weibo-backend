@@ -17,20 +17,21 @@ spl_autoload_register(function (string $class) use ($root) {
 
 use App\Core\Database;
 use App\Core\Logger;
+use App\Core\MigrationRunner;
 
 Logger::init($config['log']['path']);
 Database::init($config['db']);
 
-$dir = $root . '/migrations';
-$files = glob($dir . '/*.sql');
-sort($files);
+$result = MigrationRunner::run($root . '/migrations', [
+    // CLI runs are often used to bootstrap/repair; tolerate common "already exists" errors.
+    'tolerate_existing' => true,
+]);
 
-foreach ($files as $file) {
-    $sql = file_get_contents($file);
-    if ($sql === false) { echo "Skip $file\n"; continue; }
-    echo "Running: $file\n";
-    $pdo = Database::pdo();
-    $pdo->exec($sql);
+echo "Applied {$result['applied']} migration(s)\n";
+if (!empty($result['files'])) {
+    foreach ($result['files'] as $f) {
+        echo " - {$f}\n";
+    }
 }
 echo "Done.\n";
 ?>

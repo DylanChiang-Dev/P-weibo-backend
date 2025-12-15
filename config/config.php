@@ -70,6 +70,12 @@ function config(): array {
         'app_debug' => $getBool('APP_DEBUG', $appEnv !== 'production'),
         'app_url' => $get('APP_URL', 'http://localhost'),
         'frontend_origin' => implode(',', $frontendOrigins),
+        'migrations' => [
+            // Enable to auto-apply pending migrations on first request after deploy.
+            'auto' => $getBool('AUTO_MIGRATE', false),
+            // Tolerate common "already exists" errors when bootstrapping an existing DB.
+            'tolerate_existing' => $getBool('MIGRATE_TOLERATE_EXISTING', false),
+        ],
         'cookie' => [
             // If you need a shared cookie across subdomains, set COOKIE_DOMAIN=.3331322.xyz
             'domain' => $get('COOKIE_DOMAIN', ''),
