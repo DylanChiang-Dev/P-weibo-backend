@@ -46,12 +46,12 @@ class MysqliMigrationRunner {
                 }
 
                 $safeName = $mysqli->real_escape_string($name);
-                $ok = $mysqli->query("INSERT INTO schema_migrations (migration, applied_at) VALUES ('{$safeName}', NOW())");
-                if (!$ok) {
-                    if ($tolerateExisting && $mysqli->errno === 1062) {
+                $insert = self::query($mysqli, "INSERT INTO schema_migrations (migration, applied_at) VALUES ('{$safeName}', NOW())");
+                if (!$insert['ok']) {
+                    if ($tolerateExisting && (int)$insert['errno'] === 1062) {
                         // already recorded
                     } else {
-                        throw new \RuntimeException('Failed to record migration: ' . $mysqli->error);
+                        throw new \RuntimeException('Failed to record migration: ' . $insert['error']);
                     }
                 }
 
@@ -98,6 +98,12 @@ class MysqliMigrationRunner {
             throw new \RuntimeException('mysqli extension not available');
         }
 
+        // Some hosts enable mysqli strict reporting (exceptions). Disable to keep
+        // error handling consistent and tolerant for migrations.
+        if (function_exists('mysqli_report') && defined('MYSQLI_REPORT_OFF')) {
+            @mysqli_report(MYSQLI_REPORT_OFF);
+        }
+
         $host = (string)($db['host'] ?? '127.0.0.1');
         $port = (int)($db['port'] ?? 3306);
         $user = (string)($db['user'] ?? '');
@@ -105,17 +111,35 @@ class MysqliMigrationRunner {
         $name = (string)($db['name'] ?? '');
         $charset = (string)($db['charset'] ?? 'utf8mb4');
 
-        $mysqli = @new \mysqli($host, $user, $pass, $name, $port);
+        try {
+            $mysqli = @new \mysqli($host, $user, $pass, $name, $port);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('MySQL connect failed: ' . $e->getMessage(), 0, $e);
+        }
         if ($mysqli->connect_errno) {
             throw new \RuntimeException('MySQL connect failed: ' . $mysqli->connect_error);
         }
 
         if (!$mysqli->set_charset($charset)) {
             // fallback
-            $mysqli->query("SET NAMES '" . $mysqli->real_escape_string($charset) . "'");
+            self::query($mysqli, "SET NAMES '" . $mysqli->real_escape_string($charset) . "'");
         }
 
         return $mysqli;
+    }
+
+    private static function query(\mysqli $mysqli, string $sql): array {
+        try {
+            $res = $mysqli->query($sql);
+            if ($res === false) {
+                return ['ok' => false, 'result' => null, 'errno' => (int)$mysqli->errno, 'error' => (string)$mysqli->error];
+            }
+            return ['ok' => true, 'result' => $res, 'errno' => 0, 'error' => ''];
+        } catch (\Throwable $e) {
+            $code = (int)($e->getCode() ?: $mysqli->errno);
+            $msg = (string)($e->getMessage() ?: $mysqli->error);
+            return ['ok' => false, 'result' => null, 'errno' => $code, 'error' => $msg];
+        }
     }
 
     private static function ensureMigrationsTable(\mysqli $mysqli): void {
@@ -124,14 +148,16 @@ class MysqliMigrationRunner {
             migration VARCHAR(255) NOT NULL UNIQUE,
             applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
-        if (!$mysqli->query($sql)) {
-            throw new \RuntimeException('Failed to create schema_migrations: ' . $mysqli->error);
+        $res = self::query($mysqli, $sql);
+        if (!$res['ok']) {
+            throw new \RuntimeException('Failed to create schema_migrations: ' . $res['error']);
         }
     }
 
     private static function getApplied(\mysqli $mysqli): array {
         $out = [];
-        $res = $mysqli->query('SELECT migration FROM schema_migrations');
+        $q = self::query($mysqli, 'SELECT migration FROM schema_migrations');
+        $res = $q['result'] ?? null;
         if ($res instanceof \mysqli_result) {
             while ($row = $res->fetch_assoc()) {
                 if (isset($row['migration'])) {
@@ -150,12 +176,12 @@ class MysqliMigrationRunner {
         $normalized = self::stripUnsupportedIfNotExists($trimmed);
         $analyzable = self::stripLeadingPreamble($normalized);
 
-        $ok = $mysqli->query($normalized);
-        if ($ok) return;
+        $r = self::query($mysqli, $normalized);
+        if ($r['ok']) return;
 
         // If a multi-op ALTER TABLE fails due to duplicate column/index, retry by splitting operations.
         if ($tolerateExisting && self::looksLikeAlterTable($analyzable)) {
-            $code = (int)$mysqli->errno;
+            $code = (int)($r['errno'] ?? 0);
             if (in_array($code, [1050, 1060, 1061, 1062, 1091], true)) {
                 self::execAlterTableOps($mysqli, $analyzable, $tolerateExisting);
                 return;
@@ -163,23 +189,24 @@ class MysqliMigrationRunner {
         }
 
         // Retry if syntax error likely caused by IF NOT EXISTS.
-        if ($mysqli->errno === 1064 && stripos($trimmed, 'if not exists') !== false) {
+        if ((int)($r['errno'] ?? 0) === 1064 && stripos($trimmed, 'if not exists') !== false) {
             $retry = self::stripUnsupportedIfNotExists($trimmed);
             if ($retry !== $trimmed) {
-                if ($mysqli->query($retry)) return;
+                $rr = self::query($mysqli, $retry);
+                if ($rr['ok']) return;
             }
         }
 
-        if ($tolerateExisting && self::isTolerableDdlError($mysqli->errno)) {
+        if ($tolerateExisting && self::isTolerableDdlError((int)($r['errno'] ?? 0))) {
             Logger::warn('migration_stmt_skipped', [
                 'reason' => 'tolerable_error',
-                'driver_code' => $mysqli->errno,
-                'message' => $mysqli->error,
+                'driver_code' => (int)($r['errno'] ?? 0),
+                'message' => (string)($r['error'] ?? ''),
             ]);
             return;
         }
 
-        throw new \RuntimeException('Migration failed: ' . $mysqli->error);
+        throw new \RuntimeException((string)($r['error'] ?? 'Migration failed'));
     }
 
     private static function looksLikeAlterTable(string $sql): bool {
@@ -206,19 +233,19 @@ class MysqliMigrationRunner {
 
         foreach ($parts as $op) {
             $stmtSql = self::stripUnsupportedIfNotExists('ALTER TABLE ' . $table . ' ' . $op);
-            $ok = $mysqli->query($stmtSql);
-            if ($ok) continue;
+            $r = self::query($mysqli, $stmtSql);
+            if ($r['ok']) continue;
 
-            if ($tolerateExisting && self::isTolerableDdlError((int)$mysqli->errno)) {
+            if ($tolerateExisting && self::isTolerableDdlError((int)($r['errno'] ?? 0))) {
                 Logger::warn('migration_stmt_skipped', [
                     'reason' => 'tolerable_error',
-                    'driver_code' => $mysqli->errno,
-                    'message' => $mysqli->error,
+                    'driver_code' => (int)($r['errno'] ?? 0),
+                    'message' => (string)($r['error'] ?? ''),
                 ]);
                 continue;
             }
 
-            throw new \RuntimeException('Migration failed: ' . $mysqli->error);
+            throw new \RuntimeException((string)($r['error'] ?? 'Migration failed'));
         }
     }
 
