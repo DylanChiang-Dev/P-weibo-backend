@@ -38,7 +38,7 @@ class AuthMiddleware implements Middleware {
             ];
 
             try {
-                $tokens = TokenService::refresh($refresh);
+                $tokens = TokenService::refresh($refresh, $request->userAgent(), $request->ip());
 
                 Response::setCookie('refresh_token', $tokens['refresh_token'], $cookieBase + [
                     'expires' => time() + (int)$config['jwt']['refresh_ttl'],

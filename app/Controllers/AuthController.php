@@ -95,7 +95,7 @@ class AuthController {
         }
 
         try {
-            $tokens = $this->authService->refresh($refresh);
+            $tokens = $this->authService->refresh($refresh, $req->userAgent(), $req->ip());
             $cookieBase = $this->cookieBaseOptions($config);
             Response::setCookie('refresh_token', $tokens['refresh_token'], $cookieBase + [
                 'expires' => time() + (int)$config['jwt']['refresh_ttl'],

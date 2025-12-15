@@ -35,8 +35,8 @@ class AuthService {
         return TokenService::issueTokens((int)$user['id'], $ua, $ip);
     }
 
-    public function refresh(string $refreshToken): array {
-        return TokenService::refresh($refreshToken);
+    public function refresh(string $refreshToken, string $ua = '', string $ip = ''): array {
+        return TokenService::refresh($refreshToken, $ua, $ip);
     }
 
     public function logout(string $refreshToken): void {

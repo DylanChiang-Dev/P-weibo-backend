@@ -105,6 +105,9 @@ function config(): array {
             'refresh_secret' => $get('JWT_REFRESH_SECRET', ''),
             'access_ttl' => (int)$get('JWT_ACCESS_TTL', 900),
             'refresh_ttl' => (int)$get('JWT_REFRESH_TTL', 1209600),
+            // If refresh token rotation happens concurrently (multiple requests), allow a short grace window
+            // to avoid false-positive "reuse" logout storms.
+            'refresh_reuse_grace_seconds' => (int)$get('JWT_REFRESH_REUSE_GRACE_SECONDS', 10),
         ],
         'upload' => [
             'path' => $get('UPLOAD_PATH', dirname(__DIR__) . '/public/uploads'),

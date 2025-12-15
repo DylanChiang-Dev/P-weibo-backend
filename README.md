@@ -109,6 +109,18 @@ DB_PASS=your_password
 JWT_ACCESS_SECRET=your-64-char-random-string
 JWT_REFRESH_SECRET=your-64-char-random-string
 
+# JWT 過期（秒）
+# 默認 access 900=15 分鐘；refresh 1209600=14 天
+JWT_ACCESS_TTL=900
+JWT_REFRESH_TTL=1209600
+# 避免並發刷新導致誤判登出（秒）
+JWT_REFRESH_REUSE_GRACE_SECONDS=10
+
+# Cookie（跨站前端一般需要 SameSite=None + Secure=true）
+# COOKIE_DOMAIN=.yourdomain.com
+COOKIE_SAMESITE=None
+COOKIE_SECURE=true
+
 # 管理員帳號
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=your-strong-password
