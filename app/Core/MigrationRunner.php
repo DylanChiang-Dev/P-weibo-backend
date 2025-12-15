@@ -183,14 +183,44 @@ class MigrationRunner {
         $normalized = self::normalizeCompatSql($trimmed);
 
         try {
-            $pdo->exec($normalized);
+            // IMPORTANT: Some migrations contain SELECT statements (e.g. status output).
+            // Using PDO::exec() on statements that return result sets can leave an unconsumed
+            // result pending, triggering MySQL error 2014 on the next query. Use PDO::query()
+            // and fully consume results for such statements.
+            if (self::statementReturnsResultSet($normalized)) {
+                $stmt = $pdo->query($normalized);
+                if ($stmt) {
+                    try {
+                        do {
+                            try { $stmt->fetchAll(); } catch (\Throwable) { /* ignore */ }
+                        } while ($stmt->nextRowset());
+                    } finally {
+                        try { $stmt->closeCursor(); } catch (\Throwable) {}
+                    }
+                }
+            } else {
+                $pdo->exec($normalized);
+            }
         } catch (PDOException $e) {
             // If we hit a syntax error that may be caused by unsupported IF NOT EXISTS, retry with it stripped.
             $driverCode = (int)($e->errorInfo[1] ?? 0);
             if ($driverCode === 1064 && stripos($trimmed, 'if not exists') !== false) {
                 $retry = self::stripUnsupportedIfNotExists($trimmed);
                 if ($retry !== $trimmed) {
-                    $pdo->exec($retry);
+                    if (self::statementReturnsResultSet($retry)) {
+                        $stmt = $pdo->query($retry);
+                        if ($stmt) {
+                            try {
+                                do {
+                                    try { $stmt->fetchAll(); } catch (\Throwable) { /* ignore */ }
+                                } while ($stmt->nextRowset());
+                            } finally {
+                                try { $stmt->closeCursor(); } catch (\Throwable) {}
+                            }
+                        }
+                    } else {
+                        $pdo->exec($retry);
+                    }
                     return;
                 }
             }
@@ -206,6 +236,25 @@ class MigrationRunner {
             }
             throw $e;
         }
+    }
+
+    private static function statementReturnsResultSet(string $sql): bool {
+        // Strip leading whitespace and comments, then check the first keyword.
+        $head = ltrim($sql);
+
+        // Remove leading /* */ block comments.
+        while (preg_match('/^\\/\\*.*?\\*\\//s', $head, $m)) {
+            $head = ltrim(substr($head, strlen($m[0])));
+        }
+
+        // Remove leading -- / # line comments.
+        while (preg_match('/^(?:--|#)[^\\n]*\\n/s', $head, $m)) {
+            $head = ltrim(substr($head, strlen($m[0])));
+        }
+
+        if (!preg_match('/^([a-zA-Z_]+)/', $head, $m)) return false;
+        $kw = strtoupper($m[1]);
+        return in_array($kw, ['SELECT', 'SHOW', 'CALL', 'WITH', 'DESCRIBE', 'EXPLAIN'], true);
     }
 
     private static function normalizeCompatSql(string $sql): string {
