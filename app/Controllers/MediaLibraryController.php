@@ -6,6 +6,7 @@ use App\Core\ApiResponse;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Exceptions\NotFoundException;
+use App\Exceptions\InternalServerErrorException;
 use App\Models\UserMovie;
 use App\Models\UserTvShow;
 use App\Models\UserBook;
@@ -496,9 +497,32 @@ class MediaLibraryController {
             'release_date' => $this->formatDate($data['release_date'] ?? $data['released'] ?? null),
             'completed_date' => $this->formatDate($data['completed_date'] ?? $data['date'] ?? null)
         ];
-        
-        $id = UserGame::create($gameData);
-        ApiResponse::success(['id' => $id], 201);
+
+        try {
+            $id = UserGame::create($gameData);
+            ApiResponse::success(['id' => $id], 201);
+        } catch (\PDOException $e) {
+            $msg = $e->getMessage();
+
+            // Common production issue: DB schema not migrated yet (rawg_id still NOT NULL / missing new columns)
+            if (stripos($msg, 'rawg_id') !== false && stripos($msg, 'cannot be null') !== false) {
+                throw new InternalServerErrorException('Database schema outdated', [
+                    'reason' => 'rawg_id_not_nullable',
+                    'hint' => 'Apply migrations/017_fix_rawg_id_constraint.sql so user_games.rawg_id can be NULL',
+                ]);
+            }
+            if (stripos($msg, 'unknown column') !== false && (stripos($msg, 'source') !== false || stripos($msg, 'source_id') !== false)) {
+                throw new InternalServerErrorException('Database schema outdated', [
+                    'reason' => 'missing_source_columns',
+                    'hint' => 'Apply migrations/029_add_source_fields_to_user_games.sql to add user_games.source/source_id',
+                ]);
+            }
+
+            throw new InternalServerErrorException('Internal Server Error', [
+                'reason' => 'db_error',
+                'hint' => 'Check server logs for PDOException and ensure migrations are applied',
+            ]);
+        }
     }
     
     public function getGame(Request $req, array $params): void {

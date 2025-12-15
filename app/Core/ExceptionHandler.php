@@ -15,6 +15,9 @@ class ExceptionHandler {
     public static function handle(Throwable $e): void {
         // Add CORS headers for all error responses
         self::addCorsHeaders();
+
+        $cfg = config();
+        $debug = (bool)($cfg['app_debug'] ?? false);
         
         // Log the exception
         Logger::error('exception', [
@@ -49,7 +52,13 @@ class ExceptionHandler {
             // Unknown exception - don't leak internal details
             $statusCode = 500;
             $message = 'Internal Server Error';
-            $details = null;
+            $details = $debug ? [
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ] : null;
         }
 
         // Send error response

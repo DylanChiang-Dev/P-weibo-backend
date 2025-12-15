@@ -67,6 +67,7 @@ function config(): array {
 
     $config = [
         'app_env' => $appEnv,
+        'app_debug' => $getBool('APP_DEBUG', $appEnv !== 'production'),
         'app_url' => $get('APP_URL', 'http://localhost'),
         'frontend_origin' => implode(',', $frontendOrigins),
         'cookie' => [
