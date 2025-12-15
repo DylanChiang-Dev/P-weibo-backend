@@ -22,6 +22,7 @@ spl_autoload_register(function (string $class) use ($root) {
 use App\Core\Database;
 use App\Core\Logger;
 use App\Core\MigrationRunner;
+use App\Core\MysqliMigrationRunner;
 use PDO;
 
 header('Content-Type: text/html; charset=utf-8');
@@ -29,7 +30,9 @@ header('Cache-Control: no-store');
 
 $token = (string)($config['migrations']['tool_token'] ?? '');
 $provided = (string)($_GET['token'] ?? $_POST['token'] ?? '');
-if ($token === '' || !hash_equals($token, $provided)) {
+// If MIGRATION_TOOL_TOKEN is empty, allow access (for local/private setup).
+// Set MIGRATION_TOOL_TOKEN to re-enable protection.
+if ($token !== '' && !hash_equals($token, $provided)) {
     http_response_code(403);
     echo '<h1>403 Forbidden</h1><p>Missing or invalid token.</p>';
     exit;
@@ -52,7 +55,12 @@ $options = [
 if (defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
     $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = true;
 }
-$pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
+$pdo = null;
+try {
+    $pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
+} catch (\Throwable $e) {
+    $pdo = null;
+}
 
 $migrationsDir = $root . '/migrations';
 $message = null;
@@ -60,7 +68,8 @@ $result = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run') {
     try {
-        $result = MigrationRunner::runWithPdo($pdo, $migrationsDir, [
+        // Prefer mysqli runner (more compatible on some hosts)
+        $result = MysqliMigrationRunner::run($db, $migrationsDir, [
             'tolerate_existing' => true,
         ]);
         $message = 'Migrations applied: ' . (int)($result['applied'] ?? 0);
@@ -69,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run')
     }
 }
 
-$status = MigrationRunner::statusWithPdo($pdo, $migrationsDir);
+$status = MysqliMigrationRunner::status($db, $migrationsDir);
 $pending = $status['pending'] ?? [];
 
 ?>

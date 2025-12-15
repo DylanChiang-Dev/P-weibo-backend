@@ -18,11 +18,32 @@ spl_autoload_register(function (string $class) use ($root) {
 use App\Core\Database;
 use App\Core\Logger;
 use App\Core\MigrationRunner;
+use App\Core\MysqliMigrationRunner;
 use PDO;
 
 Logger::init($config['log']['path']);
 
 $db = $config['db'];
+$migrationsDir = $root . '/migrations';
+
+// Prefer mysqli (avoids PDO "2014 unbuffered query" issues on some hosts)
+try {
+    $result = MysqliMigrationRunner::run($db, $migrationsDir, [
+        'tolerate_existing' => true,
+    ]);
+
+    echo "Applied {$result['applied']} migration(s)\n";
+    if (!empty($result['files'])) {
+        foreach ($result['files'] as $f) {
+            echo " - {$f}\n";
+        }
+    }
+    echo "Done.\n";
+    exit;
+} catch (\Throwable $e) {
+    echo "mysqli migration failed, falling back to PDO: {$e->getMessage()}\n";
+}
+
 $dsn = sprintf(
     'mysql:host=%s;port=%d;dbname=%s;charset=%s',
     $db['host'],
@@ -40,7 +61,7 @@ if (defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
 }
 $pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
 
-$result = MigrationRunner::runWithPdo($pdo, $root . '/migrations', [
+$result = MigrationRunner::runWithPdo($pdo, $migrationsDir, [
     // CLI runs are often used to bootstrap/repair; tolerate common "already exists" errors.
     'tolerate_existing' => true,
 ]);
