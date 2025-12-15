@@ -18,11 +18,29 @@ spl_autoload_register(function (string $class) use ($root) {
 use App\Core\Database;
 use App\Core\Logger;
 use App\Core\MigrationRunner;
+use PDO;
 
 Logger::init($config['log']['path']);
-Database::init($config['db']);
 
-$result = MigrationRunner::run($root . '/migrations', [
+$db = $config['db'];
+$dsn = sprintf(
+    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+    $db['host'],
+    (int)$db['port'],
+    $db['name'],
+    $db['charset']
+);
+$options = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES => false,
+];
+if (defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
+    $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = true;
+}
+$pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
+
+$result = MigrationRunner::runWithPdo($pdo, $root . '/migrations', [
     // CLI runs are often used to bootstrap/repair; tolerate common "already exists" errors.
     'tolerate_existing' => true,
 ]);

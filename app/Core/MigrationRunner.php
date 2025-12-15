@@ -14,7 +14,10 @@ class MigrationRunner {
      * - lock_timeout (int): seconds.
      */
     public static function run(string $migrationsDir, array $opts = []): array {
-        $pdo = Database::pdo();
+        return self::runWithPdo(Database::pdo(), $migrationsDir, $opts);
+    }
+
+    public static function runWithPdo(PDO $pdo, string $migrationsDir, array $opts = []): array {
 
         $lockName = (string)($opts['lock_name'] ?? 'pweibo:schema_migrations');
         $lockTimeout = (int)($opts['lock_timeout'] ?? 10);
@@ -87,7 +90,10 @@ class MigrationRunner {
     }
 
     public static function status(string $migrationsDir): array {
-        $pdo = Database::pdo();
+        return self::statusWithPdo(Database::pdo(), $migrationsDir);
+    }
+
+    public static function statusWithPdo(PDO $pdo, string $migrationsDir): array {
         self::ensureMigrationsTable($pdo);
 
         $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
