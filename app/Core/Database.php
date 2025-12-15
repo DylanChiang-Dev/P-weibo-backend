@@ -15,6 +15,11 @@ class Database {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ];
+        // Avoid "Cannot execute queries while other unbuffered queries are active" (PDO/MySQL 2014)
+        // by enabling buffered queries when available.
+        if (defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
+            $options[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = true;
+        }
         try {
             self::$pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
         } catch (PDOException $e) {

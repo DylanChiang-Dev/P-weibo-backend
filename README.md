@@ -129,6 +129,12 @@ ADMIN_DISPLAY_NAME=Admin
 # 文件上傳
 MAX_IMAGE_MB=10
 MAX_VIDEO_MB=100
+
+# 自動遷移（可選）
+# AUTO_MIGRATE=1
+# MIGRATE_TOLERATE_EXISTING=1
+# 網頁遷移工具（可選，設置後訪問 /migrate.php?token=...）
+# MIGRATION_TOOL_TOKEN=generate-a-long-random-token
 ```
 
 **生成強隨機密鑰**：

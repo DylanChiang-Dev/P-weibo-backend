@@ -86,6 +86,29 @@ class MigrationRunner {
         }
     }
 
+    public static function status(string $migrationsDir): array {
+        $pdo = Database::pdo();
+        self::ensureMigrationsTable($pdo);
+
+        $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
+        sort($files);
+
+        $applied = self::getApplied($pdo);
+        $pending = [];
+        foreach ($files as $file) {
+            $name = basename($file);
+            if (!isset($applied[$name])) {
+                $pending[] = $name;
+            }
+        }
+
+        return [
+            'pending' => $pending,
+            'pending_count' => count($pending),
+            'applied_count' => count($applied),
+        ];
+    }
+
     private static function ensureMigrationsTable(PDO $pdo): bool {
         $created = false;
         $pdo->exec(

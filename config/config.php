@@ -75,6 +75,8 @@ function config(): array {
             'auto' => $getBool('AUTO_MIGRATE', false),
             // Tolerate common "already exists" errors when bootstrapping an existing DB.
             'tolerate_existing' => $getBool('MIGRATE_TOLERATE_EXISTING', false),
+            // Token-protected web migration tool (public/migrate.php). Leave empty to disable.
+            'tool_token' => (string)$get('MIGRATION_TOOL_TOKEN', ''),
         ],
         'cookie' => [
             // If you need a shared cookie across subdomains, set COOKIE_DOMAIN=.3331322.xyz
