@@ -23,7 +23,29 @@ class SearchController {
         if ($query === '') {
             throw new ValidationException('Missing query');
         }
-        $data = $this->igdbService->search($userId, $query);
+
+        $limit = (int)($req->query['limit'] ?? 20);
+        $limit = max(1, min(50, $limit));
+
+        // Exact match: IGDB URL or numeric ID
+        if (ctype_digit($query)) {
+            $game = $this->igdbService->getGameById($userId, (int)$query);
+            if ($game) {
+                ApiResponse::success([$game]);
+            }
+        }
+
+        if (preg_match('~(?:https?://)?(?:www\\.)?igdb\\.com/games/([^/?#]+)~i', $query, $m)) {
+            $slug = trim((string)($m[1] ?? ''));
+            if ($slug !== '') {
+                $game = $this->igdbService->getGameBySlug($userId, $slug);
+                if ($game) {
+                    ApiResponse::success([$game]);
+                }
+            }
+        }
+
+        $data = $this->igdbService->search($userId, $query, $limit);
         ApiResponse::success($data);
     }
 
@@ -107,4 +129,3 @@ class SearchController {
     }
 }
 ?>
-

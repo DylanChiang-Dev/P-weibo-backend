@@ -444,17 +444,19 @@ class MediaLibraryController {
     
     public function addGame(Request $req): void {
         $data = is_array($req->body) ? $req->body : [];
-        
-        // Accept either igdb_id or rawg_id (at least one required)
-        if (empty($data['igdb_id']) && empty($data['rawg_id'])) {
-            throw new ValidationException('Bad Request', ['igdb_id or rawg_id is required']);
+
+        // Manual add supported: title/name is required; igdb_id/rawg_id are optional.
+        $title = isset($data['title']) ? trim((string)$data['title']) : '';
+        $name = isset($data['name']) ? trim((string)$data['name']) : '';
+        if ($title === '' && $name === '') {
+            throw new ValidationException('Bad Request', ['title is required']);
         }
         
         $userId = $this->getUserId($req);
         
-        // Check for duplicates by either ID
-        $igdbId = isset($data['igdb_id']) ? (int)$data['igdb_id'] : null;
-        $rawgId = isset($data['rawg_id']) && $data['rawg_id'] ? (int)$data['rawg_id'] : null;
+        // Optional external IDs
+        $igdbId = isset($data['igdb_id']) && $data['igdb_id'] !== '' && $data['igdb_id'] !== null ? (int)$data['igdb_id'] : null;
+        $rawgId = isset($data['rawg_id']) && $data['rawg_id'] !== '' && $data['rawg_id'] !== null ? (int)$data['rawg_id'] : null;
         
         // Check for duplicates
         if ($rawgId && UserGame::exists($userId, $rawgId)) {
@@ -463,14 +465,19 @@ class MediaLibraryController {
         if ($igdbId && UserGame::existsByIgdbId($userId, $igdbId)) {
             throw new ValidationException('Game already in library');
         }
+
+        $source = $igdbId ? 'igdb' : ($rawgId ? 'rawg' : 'manual');
+        $sourceId = $igdbId ? $igdbId : ($rawgId ? $rawgId : null);
         
         $gameData = [
             'user_id' => $userId,
             'rawg_id' => $rawgId,
             'igdb_id' => $igdbId,
+            'source' => $source,
+            'source_id' => $sourceId,
             // Metadata fields
-            'name' => $data['name'] ?? $data['title'] ?? null,
-            'title_zh' => isset($data['title_zh']) ? trim((string)$data['title_zh']) : null,
+            'name' => $name !== '' ? $name : $title,
+            'title_zh' => isset($data['title_zh']) ? (($v = trim((string)$data['title_zh'])) === '' ? null : $v) : null,
             'cover_image_cdn' => $data['cover_image_cdn'] ?? $data['cover_url'] ?? null,
             'overview' => $data['overview'] ?? null,
             'genres' => isset($data['genres']) ? json_encode($data['genres']) : null,
@@ -524,6 +531,17 @@ class MediaLibraryController {
         }
         
         foreach ($allowedFields as $field) {
+            if ($field === 'title_zh' && array_key_exists('title_zh', $data)) {
+                $val = $data['title_zh'];
+                if ($val === null) {
+                    $updateData['title_zh'] = null;
+                } else {
+                    $trimmed = trim((string)$val);
+                    $updateData['title_zh'] = $trimmed === '' ? null : $trimmed;
+                }
+                continue;
+            }
+
             if (isset($data[$field])) {
                 if (in_array($field, $jsonFields) && is_array($data[$field])) {
                     $updateData[$field] = json_encode($data[$field]);

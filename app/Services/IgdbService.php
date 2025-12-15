@@ -12,7 +12,8 @@ class IgdbService {
         $this->integrationService = new IntegrationService();
     }
 
-    public function search(int $userId, string $query): array {
+    public function search(int $userId, string $query, int $limit = 20): array {
+        $limit = max(1, min(50, $limit));
         $creds = $this->integrationService->getCredentials($userId);
         $clientId = trim((string)($creds['igdb_client_id'] ?? ''));
         $clientSecret = trim((string)($creds['igdb_client_secret'] ?? ''));
@@ -23,9 +24,54 @@ class IgdbService {
         $token = $this->getAccessToken($userId, $clientId, $clientSecret);
 
         $body = 'search "' . $this->escapeIgdb($query) . "\";\n"
-            . "fields name, cover.image_id, first_release_date, total_rating, summary, platforms.name;\n"
-            . "limit 20;";
+            . "fields id, name, slug, cover.image_id, first_release_date, total_rating, summary, platforms.name;\n"
+            . "limit " . $limit . ';';
 
+        return $this->queryGames($userId, $clientId, $clientSecret, $token, $body);
+    }
+
+    public function getGameById(int $userId, int $id): ?array {
+        if ($id <= 0) return null;
+
+        $creds = $this->integrationService->getCredentials($userId);
+        $clientId = trim((string)($creds['igdb_client_id'] ?? ''));
+        $clientSecret = trim((string)($creds['igdb_client_secret'] ?? ''));
+        if ($clientId === '' || $clientSecret === '') {
+            throw new ValidationException('IGDB not configured');
+        }
+
+        $token = $this->getAccessToken($userId, $clientId, $clientSecret);
+
+        $body = "fields id, name, slug, cover.image_id, first_release_date, total_rating, summary, platforms.name;\n"
+            . 'where id = ' . $id . ";\n"
+            . 'limit 1;';
+
+        $data = $this->queryGames($userId, $clientId, $clientSecret, $token, $body);
+        return isset($data[0]) && is_array($data[0]) ? $data[0] : null;
+    }
+
+    public function getGameBySlug(int $userId, string $slug): ?array {
+        $slug = trim($slug);
+        if ($slug === '') return null;
+
+        $creds = $this->integrationService->getCredentials($userId);
+        $clientId = trim((string)($creds['igdb_client_id'] ?? ''));
+        $clientSecret = trim((string)($creds['igdb_client_secret'] ?? ''));
+        if ($clientId === '' || $clientSecret === '') {
+            throw new ValidationException('IGDB not configured');
+        }
+
+        $token = $this->getAccessToken($userId, $clientId, $clientSecret);
+
+        $body = "fields id, name, slug, cover.image_id, first_release_date, total_rating, summary, platforms.name;\n"
+            . 'where slug = "' . $this->escapeIgdb($slug) . "\";\n"
+            . 'limit 1;';
+
+        $data = $this->queryGames($userId, $clientId, $clientSecret, $token, $body);
+        return isset($data[0]) && is_array($data[0]) ? $data[0] : null;
+    }
+
+    private function queryGames(int $userId, string $clientId, string $clientSecret, string $token, string $body): array {
         $resp = HttpClient::post('https://api.igdb.com/v4/games', $body, [
             'Client-ID' => $clientId,
             'Authorization' => 'Bearer ' . $token,
@@ -47,7 +93,6 @@ class IgdbService {
         if (!is_array($data)) {
             throw new ValidationException('IGDB upstream error');
         }
-
         return $data;
     }
 
@@ -92,4 +137,3 @@ class IgdbService {
     }
 }
 ?>
-
