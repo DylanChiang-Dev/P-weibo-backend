@@ -452,13 +452,34 @@ class MediaLibraryController {
         if ($title === '' && $name === '') {
             throw new ValidationException('Bad Request', ['title is required']);
         }
-        
+
         $userId = $this->getUserId($req);
-        
-        // Optional external IDs
+
+        $requestedSource = isset($data['source']) ? strtolower(trim((string)$data['source'])) : '';
+        if (!in_array($requestedSource, ['manual', 'igdb', 'rawg'], true)) {
+            $requestedSource = '';
+        }
+
+        // Optional external IDs (unless source explicitly says otherwise)
         $igdbId = isset($data['igdb_id']) && $data['igdb_id'] !== '' && $data['igdb_id'] !== null ? (int)$data['igdb_id'] : null;
         $rawgId = isset($data['rawg_id']) && $data['rawg_id'] !== '' && $data['rawg_id'] !== null ? (int)$data['rawg_id'] : null;
-        
+
+        // If explicitly manual, ignore any placeholder ids from clients.
+        if ($requestedSource === 'manual') {
+            $igdbId = null;
+            $rawgId = null;
+        } elseif ($requestedSource === 'igdb') {
+            $rawgId = null;
+            if (!$igdbId) {
+                throw new ValidationException('Bad Request', ['igdb_id is required for source=igdb']);
+            }
+        } elseif ($requestedSource === 'rawg') {
+            $igdbId = null;
+            if (!$rawgId) {
+                throw new ValidationException('Bad Request', ['rawg_id is required for source=rawg']);
+            }
+        }
+
         // Check for duplicates
         if ($rawgId && UserGame::exists($userId, $rawgId)) {
             throw new ValidationException('Game already in library');
@@ -467,7 +488,7 @@ class MediaLibraryController {
             throw new ValidationException('Game already in library');
         }
 
-        $source = $igdbId ? 'igdb' : ($rawgId ? 'rawg' : 'manual');
+        $source = $requestedSource !== '' ? $requestedSource : ($igdbId ? 'igdb' : ($rawgId ? 'rawg' : 'manual'));
         $sourceId = $igdbId ? $igdbId : ($rawgId ? $rawgId : null);
         
         $gameData = [
