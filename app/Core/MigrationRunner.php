@@ -28,6 +28,8 @@ class MigrationRunner {
             : $createdTrackingTable;
 
         $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
+        // schema.sql is a consolidated snapshot; applying it after incremental migrations causes conflicts.
+        $files = array_values(array_filter($files, fn ($f) => basename($f) !== 'schema.sql'));
         sort($files);
 
         $applied = self::getApplied($pdo);
@@ -97,6 +99,7 @@ class MigrationRunner {
         self::ensureMigrationsTable($pdo);
 
         $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
+        $files = array_values(array_filter($files, fn ($f) => basename($f) !== 'schema.sql'));
         sort($files);
 
         $applied = self::getApplied($pdo);
@@ -225,6 +228,15 @@ class MigrationRunner {
                 }
             }
 
+            // If a multi-op ALTER TABLE fails due to duplicate column/index, retry by splitting operations.
+            if ($tolerateExisting && self::looksLikeAlterTable($normalized)) {
+                $retryCode = (int)($e->errorInfo[1] ?? 0);
+                if (in_array($retryCode, [1050, 1060, 1061, 1062, 1091], true)) {
+                    self::execAlterTableOps($pdo, $normalized, $tolerateExisting);
+                    return;
+                }
+            }
+
             if ($tolerateExisting && self::isTolerableDdlError($e)) {
                 Logger::warn('migration_stmt_skipped', [
                     'reason' => 'tolerable_error',
@@ -236,6 +248,111 @@ class MigrationRunner {
             }
             throw $e;
         }
+    }
+
+    private static function looksLikeAlterTable(string $sql): bool {
+        return preg_match('/^ALTER\\s+TABLE\\s+/i', ltrim($sql)) === 1;
+    }
+
+    private static function execAlterTableOps(PDO $pdo, string $sql, bool $tolerateExisting): void {
+        $sql = rtrim(trim($sql), ';');
+        $m = [];
+        if (!preg_match('/^ALTER\\s+TABLE\\s+(.+?)\\s+(.*)$/is', $sql, $m)) {
+            throw new \RuntimeException('Not an ALTER TABLE statement');
+        }
+
+        $table = trim($m[1]);
+        $ops = trim($m[2]);
+        if ($ops === '') {
+            throw new \RuntimeException('No operations');
+        }
+
+        $parts = self::splitTopLevelCommas($ops);
+        if (count($parts) <= 1) {
+            throw new \RuntimeException('Not split-able');
+        }
+
+        foreach ($parts as $op) {
+            $stmtSql = self::normalizeCompatSql('ALTER TABLE ' . $table . ' ' . $op);
+            try {
+                if (self::statementReturnsResultSet($stmtSql)) {
+                    $stmt = $pdo->query($stmtSql);
+                    if ($stmt) {
+                        try {
+                            do {
+                                try { $stmt->fetchAll(); } catch (\Throwable) { /* ignore */ }
+                            } while ($stmt->nextRowset());
+                        } finally {
+                            try { $stmt->closeCursor(); } catch (\Throwable) {}
+                        }
+                    }
+                } else {
+                    $pdo->exec($stmtSql);
+                }
+            } catch (PDOException $e) {
+                if ($tolerateExisting && self::isTolerableDdlError($e)) {
+                    Logger::warn('migration_stmt_skipped', [
+                        'reason' => 'tolerable_error',
+                        'driver_code' => (int)($e->errorInfo[1] ?? 0),
+                        'message' => $e->getMessage(),
+                    ]);
+                    continue;
+                }
+                throw $e;
+            }
+        }
+    }
+
+    private static function splitTopLevelCommas(string $sql): array {
+        $len = strlen($sql);
+        $buf = '';
+        $parts = [];
+
+        $inSingle = false;
+        $inDouble = false;
+        $inBacktick = false;
+        $depth = 0;
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $sql[$i];
+
+            if ($ch === "'" && !$inDouble && !$inBacktick) {
+                $escaped = $i > 0 && $sql[$i - 1] === '\\';
+                if (!$escaped) $inSingle = !$inSingle;
+                $buf .= $ch;
+                continue;
+            }
+
+            if ($ch === '"' && !$inSingle && !$inBacktick) {
+                $escaped = $i > 0 && $sql[$i - 1] === '\\';
+                if (!$escaped) $inDouble = !$inDouble;
+                $buf .= $ch;
+                continue;
+            }
+
+            if ($ch === '`' && !$inSingle && !$inDouble) {
+                $inBacktick = !$inBacktick;
+                $buf .= $ch;
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && !$inBacktick) {
+                if ($ch === '(') $depth++;
+                if ($ch === ')' && $depth > 0) $depth--;
+                if ($ch === ',' && $depth === 0) {
+                    $part = trim($buf);
+                    if ($part !== '') $parts[] = $part;
+                    $buf = '';
+                    continue;
+                }
+            }
+
+            $buf .= $ch;
+        }
+
+        $tail = trim($buf);
+        if ($tail !== '') $parts[] = $tail;
+        return $parts;
     }
 
     private static function statementReturnsResultSet(string $sql): bool {

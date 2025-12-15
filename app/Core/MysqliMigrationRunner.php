@@ -11,6 +11,7 @@ class MysqliMigrationRunner {
             $applied = self::getApplied($mysqli);
 
             $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
+            $files = array_values(array_filter($files, fn ($f) => basename($f) !== 'schema.sql'));
             sort($files);
 
             $pending = [];
@@ -67,6 +68,7 @@ class MysqliMigrationRunner {
             $applied = self::getApplied($mysqli);
 
             $files = glob(rtrim($migrationsDir, '/') . '/*.sql') ?: [];
+            $files = array_values(array_filter($files, fn ($f) => basename($f) !== 'schema.sql'));
             sort($files);
 
             $pending = [];
@@ -145,6 +147,15 @@ class MysqliMigrationRunner {
         $ok = $mysqli->query($normalized);
         if ($ok) return;
 
+        // If a multi-op ALTER TABLE fails due to duplicate column/index, retry by splitting operations.
+        if ($tolerateExisting && self::looksLikeAlterTable($normalized)) {
+            $code = (int)$mysqli->errno;
+            if (in_array($code, [1050, 1060, 1061, 1062, 1091], true)) {
+                self::execAlterTableOps($mysqli, $normalized, $tolerateExisting);
+                return;
+            }
+        }
+
         // Retry if syntax error likely caused by IF NOT EXISTS.
         if ($mysqli->errno === 1064 && stripos($trimmed, 'if not exists') !== false) {
             $retry = self::stripUnsupportedIfNotExists($trimmed);
@@ -163,6 +174,46 @@ class MysqliMigrationRunner {
         }
 
         throw new \RuntimeException('Migration failed: ' . $mysqli->error);
+    }
+
+    private static function looksLikeAlterTable(string $sql): bool {
+        return preg_match('/^ALTER\\s+TABLE\\s+/i', ltrim($sql)) === 1;
+    }
+
+    private static function execAlterTableOps(\mysqli $mysqli, string $sql, bool $tolerateExisting): void {
+        $sql = rtrim(trim($sql), ';');
+        $m = [];
+        if (!preg_match('/^ALTER\\s+TABLE\\s+(.+?)\\s+(.*)$/is', $sql, $m)) {
+            throw new \RuntimeException('Not an ALTER TABLE statement');
+        }
+
+        $table = trim($m[1]);
+        $ops = trim($m[2]);
+        if ($ops === '') {
+            throw new \RuntimeException('No operations');
+        }
+
+        $parts = self::splitTopLevelCommas($ops);
+        if (count($parts) <= 1) {
+            throw new \RuntimeException('Not split-able');
+        }
+
+        foreach ($parts as $op) {
+            $stmtSql = self::stripUnsupportedIfNotExists('ALTER TABLE ' . $table . ' ' . $op);
+            $ok = $mysqli->query($stmtSql);
+            if ($ok) continue;
+
+            if ($tolerateExisting && self::isTolerableDdlError((int)$mysqli->errno)) {
+                Logger::warn('migration_stmt_skipped', [
+                    'reason' => 'tolerable_error',
+                    'driver_code' => $mysqli->errno,
+                    'message' => $mysqli->error,
+                ]);
+                continue;
+            }
+
+            throw new \RuntimeException('Migration failed: ' . $mysqli->error);
+        }
     }
 
     private static function isTolerableDdlError(int $errno): bool {
@@ -272,5 +323,56 @@ class MysqliMigrationRunner {
 
         return $stmts;
     }
-}
 
+    private static function splitTopLevelCommas(string $sql): array {
+        $len = strlen($sql);
+        $buf = '';
+        $parts = [];
+
+        $inSingle = false;
+        $inDouble = false;
+        $inBacktick = false;
+        $depth = 0;
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $sql[$i];
+
+            if ($ch === "'" && !$inDouble && !$inBacktick) {
+                $escaped = $i > 0 && $sql[$i - 1] === '\\';
+                if (!$escaped) $inSingle = !$inSingle;
+                $buf .= $ch;
+                continue;
+            }
+
+            if ($ch === '"' && !$inSingle && !$inBacktick) {
+                $escaped = $i > 0 && $sql[$i - 1] === '\\';
+                if (!$escaped) $inDouble = !$inDouble;
+                $buf .= $ch;
+                continue;
+            }
+
+            if ($ch === '`' && !$inSingle && !$inDouble) {
+                $inBacktick = !$inBacktick;
+                $buf .= $ch;
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && !$inBacktick) {
+                if ($ch === '(') $depth++;
+                if ($ch === ')' && $depth > 0) $depth--;
+                if ($ch === ',' && $depth === 0) {
+                    $part = trim($buf);
+                    if ($part !== '') $parts[] = $part;
+                    $buf = '';
+                    continue;
+                }
+            }
+
+            $buf .= $ch;
+        }
+
+        $tail = trim($buf);
+        if ($tail !== '') $parts[] = $tail;
+        return $parts;
+    }
+}
