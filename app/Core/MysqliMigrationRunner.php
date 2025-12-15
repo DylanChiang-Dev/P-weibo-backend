@@ -36,9 +36,13 @@ class MysqliMigrationRunner {
                     throw new \RuntimeException('Failed to read migration: ' . $name);
                 }
 
-                $statements = self::splitSqlStatements($sql);
-                foreach ($statements as $stmt) {
-                    self::execStatement($mysqli, $stmt, $tolerateExisting);
+                try {
+                    $statements = self::splitSqlStatements($sql);
+                    foreach ($statements as $stmt) {
+                        self::execStatement($mysqli, $stmt, $tolerateExisting);
+                    }
+                } catch (\Throwable $e) {
+                    throw new \RuntimeException($name . ': ' . $e->getMessage(), 0, $e);
                 }
 
                 $safeName = $mysqli->real_escape_string($name);
@@ -144,14 +148,16 @@ class MysqliMigrationRunner {
         if ($trimmed === '') return;
 
         $normalized = self::stripUnsupportedIfNotExists($trimmed);
+        $analyzable = self::stripLeadingPreamble($normalized);
+
         $ok = $mysqli->query($normalized);
         if ($ok) return;
 
         // If a multi-op ALTER TABLE fails due to duplicate column/index, retry by splitting operations.
-        if ($tolerateExisting && self::looksLikeAlterTable($normalized)) {
+        if ($tolerateExisting && self::looksLikeAlterTable($analyzable)) {
             $code = (int)$mysqli->errno;
             if (in_array($code, [1050, 1060, 1061, 1062, 1091], true)) {
-                self::execAlterTableOps($mysqli, $normalized, $tolerateExisting);
+                self::execAlterTableOps($mysqli, $analyzable, $tolerateExisting);
                 return;
             }
         }
@@ -232,6 +238,22 @@ class MysqliMigrationRunner {
         $sql = preg_replace('/\\bADD\\s+UNIQUE\\s+INDEX\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD UNIQUE INDEX', $sql) ?? $sql;
         $sql = preg_replace('/\\bADD\\s+KEY\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD KEY', $sql) ?? $sql;
         return $sql;
+    }
+
+    private static function stripLeadingPreamble(string $sql): string {
+        $head = ltrim($sql);
+
+        // Remove leading /* */ block comments.
+        while (preg_match('/^\\/\\*.*?\\*\\//s', $head, $m)) {
+            $head = ltrim(substr($head, strlen($m[0])));
+        }
+
+        // Remove leading -- / # line comments.
+        while (preg_match('/^(?:--|#)[^\\n]*\\n/s', $head, $m)) {
+            $head = ltrim(substr($head, strlen($m[0])));
+        }
+
+        return $head;
     }
 
     private static function splitSqlStatements(string $sql): array {
