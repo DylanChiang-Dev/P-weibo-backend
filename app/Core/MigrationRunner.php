@@ -99,6 +99,9 @@ class MigrationRunner {
         // Detect "first run" by checking whether table is empty.
         $stmt = $pdo->query('SELECT COUNT(*) AS c FROM schema_migrations');
         $row = $stmt ? $stmt->fetch() : null;
+        if ($stmt) {
+            try { $stmt->closeCursor(); } catch (\Throwable) {}
+        }
         if (is_array($row) && (int)($row['c'] ?? 0) === 0) {
             $created = true;
         }
@@ -114,6 +117,7 @@ class MigrationRunner {
                 $out[(string)$row['migration']] = true;
             }
         }
+        try { $stmt->closeCursor(); } catch (\Throwable) {}
         return $out;
     }
 
@@ -122,6 +126,7 @@ class MigrationRunner {
             $stmt = $pdo->prepare('SELECT GET_LOCK(?, ?) AS l');
             $stmt->execute([$name, $timeout]);
             $row = $stmt->fetch();
+            try { $stmt->closeCursor(); } catch (\Throwable) {}
             return is_array($row) && (int)($row['l'] ?? 0) === 1;
         } catch (\Throwable) {
             // If GET_LOCK isn't available, run without lock (best-effort).
@@ -133,6 +138,7 @@ class MigrationRunner {
         try {
             $stmt = $pdo->prepare('SELECT RELEASE_LOCK(?) AS r');
             $stmt->execute([$name]);
+            try { $stmt->closeCursor(); } catch (\Throwable) {}
         } catch (\Throwable) {
             // ignore
         }
