@@ -183,8 +183,14 @@ class MysqliMigrationRunner {
         if ($tolerateExisting && self::looksLikeAlterTable($analyzable)) {
             $code = (int)($r['errno'] ?? 0);
             if (in_array($code, [1050, 1060, 1061, 1062, 1091], true)) {
-                self::execAlterTableOps($mysqli, $analyzable, $tolerateExisting);
-                return;
+                if (self::isMultiOpAlterTable($analyzable)) {
+                    try {
+                        self::execAlterTableOps($mysqli, $analyzable, $tolerateExisting);
+                        return;
+                    } catch (\Throwable) {
+                        // Fall back to tolerate/skip handling below.
+                    }
+                }
             }
         }
 
@@ -211,6 +217,19 @@ class MysqliMigrationRunner {
 
     private static function looksLikeAlterTable(string $sql): bool {
         return preg_match('/^ALTER\\s+TABLE\\s+/i', ltrim($sql)) === 1;
+    }
+
+    private static function isMultiOpAlterTable(string $sql): bool {
+        $sql = rtrim(trim($sql), ';');
+        $m = [];
+        if (!preg_match('/^ALTER\\s+TABLE\\s+(.+?)\\s+(.*)$/is', $sql, $m)) {
+            return false;
+        }
+
+        $ops = trim($m[2] ?? '');
+        if ($ops === '') return false;
+        $parts = self::splitTopLevelCommas($ops);
+        return count($parts) > 1;
     }
 
     private static function execAlterTableOps(\mysqli $mysqli, string $sql, bool $tolerateExisting): void {
