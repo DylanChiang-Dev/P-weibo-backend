@@ -142,9 +142,24 @@ class MigrationRunner {
         $trimmed = trim($sql);
         if ($trimmed === '') return;
 
+        // Compat: MySQL 5.7 doesn't support `ADD COLUMN IF NOT EXISTS`, but many of this repo's
+        // migrations use it. We normalize to plain `ADD COLUMN` and rely on tolerateExisting
+        // to skip duplicate-column errors on bootstrap.
+        $normalized = self::normalizeCompatSql($trimmed);
+
         try {
-            $pdo->exec($trimmed);
+            $pdo->exec($normalized);
         } catch (PDOException $e) {
+            // If we hit a syntax error that may be caused by unsupported IF NOT EXISTS, retry with it stripped.
+            $driverCode = (int)($e->errorInfo[1] ?? 0);
+            if ($driverCode === 1064 && stripos($trimmed, 'if not exists') !== false) {
+                $retry = self::stripUnsupportedIfNotExists($trimmed);
+                if ($retry !== $trimmed) {
+                    $pdo->exec($retry);
+                    return;
+                }
+            }
+
             if ($tolerateExisting && self::isTolerableDdlError($e)) {
                 Logger::warn('migration_stmt_skipped', [
                     'reason' => 'tolerable_error',
@@ -156,6 +171,20 @@ class MigrationRunner {
             }
             throw $e;
         }
+    }
+
+    private static function normalizeCompatSql(string $sql): string {
+        // Remove unsupported `IF NOT EXISTS` clauses from ALTER statements for older MySQL.
+        $sql = self::stripUnsupportedIfNotExists($sql);
+        return $sql;
+    }
+
+    private static function stripUnsupportedIfNotExists(string $sql): string {
+        $sql = preg_replace('/\\bADD\\s+COLUMN\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD COLUMN', $sql) ?? $sql;
+        $sql = preg_replace('/\\bADD\\s+INDEX\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD INDEX', $sql) ?? $sql;
+        $sql = preg_replace('/\\bADD\\s+UNIQUE\\s+INDEX\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD UNIQUE INDEX', $sql) ?? $sql;
+        $sql = preg_replace('/\\bADD\\s+KEY\\s+IF\\s+NOT\\s+EXISTS\\b/i', 'ADD KEY', $sql) ?? $sql;
+        return $sql;
     }
 
     private static function isTolerableDdlError(PDOException $e): bool {
@@ -263,4 +292,3 @@ class MigrationRunner {
         return $stmts;
     }
 }
-
