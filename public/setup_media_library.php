@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/_tool_guard.php';
 /**
  * 媒体库和每日打卡数据库安装工具
@@ -10,8 +12,6 @@ require_once __DIR__ . '/_tool_guard.php';
  * 使用方式：
  * - 在浏览器访问：https://yourdomain.com/setup_media_library.php
  */
-
-declare(strict_types=1);
 
 // 设置字符编码
 header('Content-Type: text/html; charset=utf-8');

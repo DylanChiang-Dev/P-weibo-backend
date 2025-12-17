@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/_tool_guard.php';
 /**
  * Media API 安装和诊断工具
@@ -13,8 +15,6 @@ require_once __DIR__ . '/_tool_guard.php';
  * - 在浏览器访问：https://yourdomain.com/setup_media.php
  * - 或命令行运行：php public/setup_media.php
  */
-
-declare(strict_types=1);
 
 // 设置字符编码
 header('Content-Type: text/html; charset=utf-8');

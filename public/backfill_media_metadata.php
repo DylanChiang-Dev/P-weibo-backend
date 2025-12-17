@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/_tool_guard.php';
 /**
  * 媒体元数据回填工具
@@ -9,8 +11,6 @@ require_once __DIR__ . '/_tool_guard.php';
  * - 浏览器访问：https://yourdomain.com/backfill_media_metadata.php
  * - 可选参数: ?type=movies&limit=50
  */
-
-declare(strict_types=1);
 
 // 设置超时和内存限制
 set_time_limit(600); // 10分钟
