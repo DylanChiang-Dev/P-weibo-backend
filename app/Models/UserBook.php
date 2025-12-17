@@ -117,13 +117,15 @@ class UserBook {
     }
     
     /**
-     * Check if user already has this book (by Google Books ID or ISBN)
+     * Check if user already has this book (by NeoDB ID, Google Books ID, or ISBN)
      */
-    public static function exists(int $userId, ?string $googleBooksId, ?string $isbn): bool {
+    public static function exists(int $userId, ?string $googleBooksId = null, ?string $isbn = null, ?string $neodbId = null): bool {
         $query = QueryBuilder::table('user_books')
             ->where('user_id', '=', $userId);
         
-        if ($googleBooksId) {
+        if ($neodbId) {
+            $query->where('neodb_id', '=', $neodbId);
+        } elseif ($googleBooksId) {
             $query->where('google_books_id', '=', $googleBooksId);
         } elseif ($isbn) {
             $query->where('isbn', '=', $isbn);

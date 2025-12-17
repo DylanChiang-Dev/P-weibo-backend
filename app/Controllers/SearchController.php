@@ -53,11 +53,15 @@ class SearchController {
         $userId = (int)($req->user['id'] ?? 0);
         $query = trim((string)($req->query['query'] ?? ''));
         $type = (string)($req->query['type'] ?? 'movie');
+        $language = trim((string)($req->query['language'] ?? ''));
         if ($query === '') {
             throw new ValidationException('Missing query');
         }
         if (!in_array($type, ['movie', 'tv'], true)) {
             throw new ValidationException('Invalid type');
+        }
+        if ($language !== '' && !in_array($language, ['en-US', 'zh-HK', 'zh-TW', 'zh-CN', 'ja-JP', 'ko-KR'], true)) {
+            throw new ValidationException('Invalid language');
         }
 
         $creds = $this->integrationService->getCredentials($userId);
@@ -70,6 +74,9 @@ class SearchController {
             . '?api_key=' . rawurlencode($apiKey)
             . '&query=' . rawurlencode($query)
             . '&include_adult=false';
+        if ($language !== '') {
+            $url .= '&language=' . rawurlencode($language);
+        }
 
         $resp = HttpClient::get($url, ['Accept' => 'application/json']);
         $data = HttpClient::json($resp);

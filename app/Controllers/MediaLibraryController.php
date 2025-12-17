@@ -356,6 +356,7 @@ class MediaLibraryController {
         $bookData = [
             'user_id' => $userId,
             'google_books_id' => $data['google_books_id'] ?? null,
+            'neodb_id' => $data['neodb_id'] ?? null,
             'isbn' => $data['isbn'] ?? null,
             // Metadata fields
             'title' => $data['title'] ?? null,
@@ -366,7 +367,7 @@ class MediaLibraryController {
             'external_rating' => isset($data['external_rating']) ? (float)$data['external_rating'] : null,
             'authors' => isset($data['authors']) ? json_encode($data['authors']) : null,
             'publisher' => $data['publisher'] ?? null,
-            'published_date' => $this->formatDate($data['published_date'] ?? null),
+            'published_date' => $this->formatDate($data['published_date'] ?? $data['release_date'] ?? null),
             'page_count' => isset($data['page_count']) ? (int)$data['page_count'] : null,
             'isbn_10' => $data['isbn_10'] ?? null,
             'isbn_13' => $data['isbn_13'] ?? null,
@@ -397,7 +398,7 @@ class MediaLibraryController {
         $data = is_array($req->body) ? $req->body : [];
         $updateData = [];
         $allowedFields = [
-            'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
+            'neodb_id', 'title', 'original_title', 'cover_image_cdn', 'cover_image_local',
             'overview', 'genres', 'external_rating',
             'authors', 'publisher', 'published_date', 'page_count', 'isbn_10', 'isbn_13', 'language',
             'my_rating', 'my_review', 'status', 'completed_date'

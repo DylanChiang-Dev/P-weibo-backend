@@ -585,7 +585,8 @@ try {
             ['name' => 'networks', 'sql' => "ALTER TABLE user_documentaries ADD COLUMN networks JSON NULL AFTER episode_runtime"],
         ],
         'user_books' => [
-            ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER isbn"],
+            ['name' => 'neodb_id', 'sql' => "ALTER TABLE user_books ADD COLUMN neodb_id VARCHAR(100) NULL AFTER google_books_id"],
+            ['name' => 'title', 'sql' => "ALTER TABLE user_books ADD COLUMN title VARCHAR(500) NULL AFTER neodb_id"],
             ['name' => 'original_title', 'sql' => "ALTER TABLE user_books ADD COLUMN original_title VARCHAR(500) NULL AFTER title"],
             ['name' => 'cover_image_cdn', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_cdn TEXT NULL AFTER original_title"],
             ['name' => 'cover_image_local', 'sql' => "ALTER TABLE user_books ADD COLUMN cover_image_local TEXT NULL AFTER cover_image_cdn"],
