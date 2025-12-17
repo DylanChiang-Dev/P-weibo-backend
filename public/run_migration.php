@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/_tool_guard.php';
 /**
  * 數據庫遷移執行工具
@@ -8,8 +10,6 @@ require_once __DIR__ . '/_tool_guard.php';
  * - 列出所有遷移: https://your-api.com/run_migration.php?action=list
  * - 執行多個遷移: https://your-api.com/run_migration.php?file=030,031,032
  */
-
-declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
