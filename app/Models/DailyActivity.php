@@ -12,6 +12,21 @@ class DailyActivity {
         $activityType = $data['activity_type'];
         $activityDate = $data['activity_date'];
         
+        // Handle Duolingo cumulative XP: calculate xp_earned from difference
+        if ($activityType === 'duolingo' && isset($data['cumulative_xp']) && $data['cumulative_xp'] !== null) {
+            // Find the most recent Duolingo record with cumulative_xp
+            $lastRecord = QueryBuilder::table('daily_activities')
+                ->where('user_id', '=', $userId)
+                ->where('activity_type', '=', 'duolingo')
+                ->whereRaw('cumulative_xp IS NOT NULL')
+                ->whereRaw('activity_date < ?', [$activityDate])
+                ->orderBy('activity_date', 'DESC')
+                ->first();
+            
+            $previousXp = $lastRecord ? (int)$lastRecord['cumulative_xp'] : 0;
+            $data['xp_earned'] = max(0, $data['cumulative_xp'] - $previousXp);
+        }
+        
         // Check if exists
         $existing = QueryBuilder::table('daily_activities')
             ->where('user_id', '=', $userId)
@@ -134,6 +149,20 @@ class DailyActivity {
         
         // Calculate streaks
         $streaks = self::calculateStreak($userId, $type);
+        
+        // For Duolingo, get the latest cumulative_xp as total_xp (current total XP)
+        if ($type === 'duolingo') {
+            $latestRecord = QueryBuilder::table('daily_activities')
+                ->where('user_id', '=', $userId)
+                ->where('activity_type', '=', 'duolingo')
+                ->whereRaw('cumulative_xp IS NOT NULL')
+                ->orderBy('activity_date', 'DESC')
+                ->first();
+            
+            if ($latestRecord && isset($latestRecord['cumulative_xp'])) {
+                $totalXP = (int)$latestRecord['cumulative_xp'];
+            }
+        }
         
         return [
             'total_days' => $totalDays,

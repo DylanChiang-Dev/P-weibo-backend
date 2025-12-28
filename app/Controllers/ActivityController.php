@@ -53,7 +53,8 @@ class ActivityController {
             'xp_earned' => isset($data['xp_earned']) ? (int)$data['xp_earned'] : null,
             'courses_completed' => isset($data['courses_completed']) ? (int)$data['courses_completed'] : null,
             'notes' => $data['notes'] ?? null,
-            'intensity' => $data['intensity'] ?? null
+            'intensity' => $data['intensity'] ?? null,
+            'cumulative_xp' => isset($data['cumulative_xp']) ? (int)$data['cumulative_xp'] : null
         ];
         
         $id = DailyActivity::checkin($activityData);

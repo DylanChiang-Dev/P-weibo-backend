@@ -106,6 +106,33 @@ try {
     }
     
     // ============================================
+    // 步骤 2.5: 执行迁移 031 (添加 cumulative_xp 列)
+    // ============================================
+    output('步骤 2.5: 执行迁移 031 (添加 cumulative_xp 列)', 'title');
+    
+    $migrationFile031 = $root . '/migrations/031_add_cumulative_xp_to_daily_activities.sql';
+    if (!file_exists($migrationFile031)) {
+        output("⚠️  迁移文件不存在，跳过: $migrationFile031", 'warning');
+    } else {
+        // 检查列是否已存在
+        $stmt = $pdo->query("SHOW COLUMNS FROM daily_activities LIKE 'cumulative_xp'");
+        if ($stmt->rowCount() > 0) {
+            output("⚠️  cumulative_xp 列已存在，跳过添加", 'warning');
+        } else {
+            $sql = file_get_contents($migrationFile031);
+            try {
+                $pdo->exec($sql);
+                output("✅ 成功添加 cumulative_xp 列到 daily_activities 表", 'success');
+                $success[] = "添加了 cumulative_xp 列";
+            } catch (\PDOException $e) {
+                $error = "添加 cumulative_xp 列失败: " . $e->getMessage();
+                output("❌ $error", 'error');
+                $errors[] = $error;
+            }
+        }
+    }
+    
+    // ============================================
     // 步骤 3: 执行迁移 011 (媒体库)
     // ============================================
     output('步骤 3: 执行迁移 011 (媒体库)', 'title');
