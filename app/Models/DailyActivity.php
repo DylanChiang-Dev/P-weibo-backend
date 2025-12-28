@@ -92,12 +92,27 @@ class DailyActivity {
         $startDate = "$year-01-01";
         $endDate = "$year-12-31";
         
-        $activities = QueryBuilder::table('daily_activities')
+        // Build query with filter for actual activity values (> 0)
+        // This ensures we only count days with real activity data
+        $query = QueryBuilder::table('daily_activities')
             ->where('user_id', '=', $userId)
             ->where('activity_type', '=', $type)
-            ->whereRaw('activity_date >= ? AND activity_date <= ?', [$startDate, $endDate])
-            ->orderBy('activity_date', 'ASC')
-            ->get();
+            ->whereRaw('activity_date >= ? AND activity_date <= ?', [$startDate, $endDate]);
+        
+        // Filter based on activity type to only include records with actual activity
+        switch ($type) {
+            case 'exercise':
+                $query->whereRaw('(duration_minutes IS NOT NULL AND duration_minutes > 0)');
+                break;
+            case 'reading':
+                $query->whereRaw('(pages_read IS NOT NULL AND pages_read > 0)');
+                break;
+            case 'duolingo':
+                $query->whereRaw('(xp_earned IS NOT NULL AND xp_earned > 0)');
+                break;
+        }
+        
+        $activities = $query->orderBy('activity_date', 'ASC')->get();
         
         $totalDays = count($activities);
         $totalMinutes = 0;
