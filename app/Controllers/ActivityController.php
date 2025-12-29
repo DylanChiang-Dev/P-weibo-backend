@@ -7,6 +7,7 @@ use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Exceptions\NotFoundException;
 use App\Models\DailyActivity;
+use App\Services\YearlyReviewService;
 
 class ActivityController {
     /**
@@ -98,6 +99,19 @@ class ActivityController {
         $stats = DailyActivity::getStats($userId, $type, $year);
         
         ApiResponse::success($stats);
+    }
+    
+    /**
+     * Get aggregated yearly review data
+     */
+    public function yearlyReview(Request $req): void {
+        $userId = $this->getUserId($req);
+        $year = isset($req->query['year']) ? (int)$req->query['year'] : (int)date('Y');
+        
+        $service = new YearlyReviewService();
+        $data = $service->getYearlyData($userId, $year);
+        
+        ApiResponse::success($data);
     }
     
     /**

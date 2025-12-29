@@ -159,6 +159,7 @@ $router->delete('/api/media/{id}', [MediaController::class, 'delete'], ['auth' =
 $router->post('/api/activities/checkin', [ActivityController::class, 'checkin'], ['middleware' => [AdminMiddleware::class]]);
 $router->get('/api/activities/heatmap', [ActivityController::class, 'heatmap']); // Public
 $router->get('/api/activities/stats', [ActivityController::class, 'stats']); // Public
+$router->get('/api/activities/yearly-review', [ActivityController::class, 'yearlyReview'], ['auth' => true]); // Auth required
 $router->get('/api/activities/daily', [ActivityController::class, 'daily']); // Public
 
 // Media Library
